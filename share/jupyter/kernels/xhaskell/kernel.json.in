@@ -1,0 +1,11 @@
+{
+  "display_name": "haskell v0.14.21.0 (xhaskell)",
+  "argv": [
+      "@XEUS_HASKELL_KERNELSPEC_PATH@xhaskell",
+      "-f",
+      "{connection_file}"
+  ],
+  "language": "haskell",
+  "metadata": {"debugger": false
+  }
+}

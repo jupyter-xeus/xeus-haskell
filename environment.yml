@@ -1,0 +1,8 @@
+name: xeus-haskell
+channels:
+  - conda-forge
+dependencies:
+  - xeus-haskell=0.1.0
+  - notebook
+  - ipywidgets>=7.6
+  - jupyterlab=3
