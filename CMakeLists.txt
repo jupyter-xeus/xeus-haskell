@@ -357,3 +357,7 @@ if(EMSCRIPTEN)
             DESTINATION ${CMAKE_INSTALL_BINDIR})
 endif ()
 
+include(MicroHs)
+fetch_and_build_microhs(MICROHS_BIN MICROHS_SRC_DIR)
+build_and_install_libmhs(${MICROHS_BIN} ${MICROHS_SRC_DIR})
+
