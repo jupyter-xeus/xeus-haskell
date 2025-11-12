@@ -276,6 +276,14 @@ if(EMSCRIPTEN)
     XEUS_HASKELL_set_kernel_options(xhaskell)
     xeus_wasm_compile_options(xhaskell)
     xeus_wasm_link_options(xhaskell "web,worker")
+    target_link_options(xhaskell PRIVATE
+      "-sEXPORTED_FUNCTIONS=['_main','_emscripten_longjmp']"
+      "-sEXPORTED_RUNTIME_METHODS=['ccall','cwrap']"
+      "-sALLOW_MEMORY_GROWTH=1"
+      "-sEXIT_RUNTIME=1"
+      "-sFORCE_FILESYSTEM=1"
+      "-sERROR_ON_UNDEFINED_SYMBOLS=0"
+    )
 endif()
 
 
