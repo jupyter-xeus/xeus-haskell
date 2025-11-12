@@ -50,7 +50,7 @@ jobs:
  
       - name: Run C++ Test
         shell: bash -l {0}
-        run: ctest --test-dir . --output-on-failure
+        run: ctest --test-dir . --output-on-failure --config Release
         working-directory: build
 
       - name: Run Python Test
