@@ -42,3 +42,7 @@ share/jupyter/kernels/xhaskell/kernel.json
 build/
 
 bld
+
+# pixi environments
+.pixi
+*.egg-info

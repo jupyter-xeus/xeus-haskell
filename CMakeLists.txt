@@ -71,7 +71,7 @@ endif()
 # ============
 
 
-set(xeus_REQUIRED_VERSION 5.0.0)
+set(xeus_REQUIRED_VERSION "5.0.0" CACHE STRING "Minimum xeus version required to build xeus-haskell")
 
 find_package(xeus ${xeus_REQUIRED_VERSION} REQUIRED)
 
@@ -376,5 +376,6 @@ target_include_directories(test_mhs_repl
   $<INSTALL_INTERFACE:include>
   PRIVATE
   ${MHS_INCLUDE_DIR})
+target_compile_definitions(test_mhs_repl PRIVATE MICROHS_RUNTIME_DIR="${MICROHS_SRC_DIR}")
 target_link_libraries(test_mhs_repl PRIVATE ${MHS_OBJ} Boost::ut)
 add_test(NAME test_mhs_repl COMMAND test_mhs_repl)

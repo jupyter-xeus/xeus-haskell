@@ -5,8 +5,6 @@
 
 namespace xeus_haskell {
 
-extern bool mhs_repl_initialized;
-
 class MicroHsRepl {
 public:
     MicroHsRepl(); // calls mhs_init() and mhs_repl_new()

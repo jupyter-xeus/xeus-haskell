@@ -1,14 +1,14 @@
 #include <boost/ut.hpp>
 #include <xeus-haskell/mhs_repl.hpp>
+using namespace boost::ut;
+using namespace std::string_literals;
 
 int main() {
-  using namespace boost::ut;
-  using namespace std;
-  xeus_haskell::MicroHsRepl repl;
-  auto result = repl.execute("1 + 1");
 
-  "positive repl test"_test = [result] {
-    expect(result.value() == "2"s);
+  "positive repl test"_test = [] {
+    xeus_haskell::MicroHsRepl repl;
+    auto result = repl.execute("1 + 1");
+    expect(eq(result.value(), "2\n"s));
   };
 
 

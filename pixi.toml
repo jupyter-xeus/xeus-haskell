@@ -1,0 +1,29 @@
+[workspace]
+authors = ["TANIGUCHI Masaya <ta2gch@gmail.com>"]
+channels = ["conda-forge"]
+name = "xeus-haskell"
+platforms = ["osx-arm64", "linux-64"]
+version = "0.1.0"
+
+[tasks]
+
+[dependencies]
+
+[feature.dev]
+channels = ["conda-forge"]
+
+[feature.dev.dependencies]
+make = "*"
+cmake = "*"
+cxx-compiler = "*"
+xeus-zmq = ">=3.0.0,<4.0"
+nlohmann_json = "*"
+cppzmq = "*"
+pytest = "*"
+jupyter_kernel_test = ">=0.4.3"
+nbval = "*"
+pytest-rerunfailures = "*"
+micromamba = "*"
+
+[environments]
+dev = { features = ["dev"], no-default-feature = true }

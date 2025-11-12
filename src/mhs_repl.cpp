@@ -1,4 +1,5 @@
 #include <expected>
+#include <functional>
 #include <string>
 #include <string_view>
 #include <regex>
@@ -16,9 +17,37 @@
 
 namespace xeus_haskell {
 
+namespace {
+
 bool mhs_repl_initialized = false;
 
-static bool is_definition(std::string_view code) {
+#ifdef MICROHS_RUNTIME_DIR
+constexpr const char* microhs_runtime_dir = MICROHS_RUNTIME_DIR;
+#else
+constexpr const char* microhs_runtime_dir = nullptr;
+#endif
+
+void ensure_microhs_environment()
+{
+    if (microhs_runtime_dir == nullptr || microhs_runtime_dir[0] == '\0')
+    {
+        return;
+    }
+
+    const char* current = std::getenv("MHSDIR");
+    if (current != nullptr && current[0] != '\0')
+    {
+        return;
+    }
+
+#ifdef _WIN32
+    _putenv_s("MHSDIR", microhs_runtime_dir);
+#else
+    setenv("MHSDIR", microhs_runtime_dir, 1);
+#endif
+}
+
+bool is_definition(std::string_view code) {
     std::string trimmed = std::regex_replace(std::string(code), std::regex(R"(--.*$)"), "");
     static const std::regex re(
         R"(^\s*(import|data|newtype|type|class|instance|foreign|infixl?|infixr|default)\b|(^|[^<>=:/!])=([^<>=:/!]|$)|::)"
@@ -26,7 +55,7 @@ static bool is_definition(std::string_view code) {
     return std::regex_search(trimmed, re);
 }
 
-static std::string capture_stdout(std::function<void()> fn) {
+std::string capture_stdout(std::function<void()> fn) {
 #ifdef _WIN32
     // Windows implementation
     HANDLE hRead, hWrite;
@@ -83,8 +112,10 @@ static std::string capture_stdout(std::function<void()> fn) {
     return output;
 #endif
 }
+} // namespace
 
 MicroHsRepl::MicroHsRepl() {
+    ensure_microhs_environment();
     if (!mhs_repl_initialized) {
         mhs_init();
         mhs_repl_initialized = true;
