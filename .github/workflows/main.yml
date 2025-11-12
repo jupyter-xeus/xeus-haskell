@@ -47,7 +47,7 @@ jobs:
         shell: bash -l {0}
         run: cmake --build . --target install --config Release
         working-directory: build
- 
+
       - name: Run C++ Test
         shell: bash -l {0}
         run: ctest -C Release --test-dir . --output-on-failure
@@ -66,7 +66,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        emsdk_ver: ["3.1.46"]
+        emsdk_ver: ["3.1.73"]
 
     steps:
       - uses: actions/checkout@v4
@@ -99,8 +99,6 @@ jobs:
             -DCMAKE_INSTALL_PREFIX=$PREFIX                    \
             -DCMAKE_FIND_ROOT_PATH_MODE_PACKAGE=ON            \
             ..
-          
-          make -j${{ steps.cpu-cores.outputs.count }}
-          
 
-  
+          make -j${{ steps.cpu-cores.outputs.count }}
+
