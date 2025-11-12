@@ -5,9 +5,11 @@ function(fetch_and_build_microhs MICROHS_BIN MICROHS_SRC_DIR)
     set(MICROHS_URL "https://github.com/augustss/MicroHs/archive/refs/tags/${MICROHS_VERSION}.tar.gz")
     set(MICROHS_PREFIX "${CMAKE_BINARY_DIR}/microhs")
     if(WIN32)
+      set(MICROHS_MAKE "nmake")
       set(MICROHS_MAKEFILE "Makefile.windows")
       set(MICROHS_SUFFIX ".exe")
     else()
+      set(MICROHS_MAKE "make")
       set(MICROHS_MAKEFILE "Makefile")
       set(MICROHS_SUFFIX "")
     endif()
@@ -18,7 +20,7 @@ function(fetch_and_build_microhs MICROHS_BIN MICROHS_SRC_DIR)
         BUILD_IN_SOURCE TRUE
         PREFIX ${MICROHS_PREFIX}
         CONFIGURE_COMMAND ""
-        BUILD_COMMAND make -f ${MICROHS_MAKEFILE}
+        BUILD_COMMAND ${MICROHS_MAKE} -f ${MICROHS_MAKEFILE}
         INSTALL_COMMAND ""
     )
 
