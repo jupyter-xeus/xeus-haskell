@@ -9,6 +9,8 @@
 #include <string>
 #include <vector>
 #include <iostream>
+#include <expected>
+#include <stdexcept>
 
 #include "nlohmann/json.hpp"
 
@@ -28,38 +30,52 @@ namespace xeus_haskell
         xeus::register_interpreter(this);
     }
 
-    void interpreter::execute_request_impl(send_reply_callback cb, // Callback to send the result
-                                  int execution_counter, // Typically the cell number
-                                  const std::string& code, // Code to execute
-                                  xeus::execute_request_config /*config*/,
-                                  nl::json /*user_expressions*/) 
+    void interpreter::execute_request_impl(send_reply_callback cb,
+                                           int execution_counter,
+                                           const std::string& code,
+                                           xeus::execute_request_config config,
+                                           nl::json /*user_expressions*/)
     {
-        // Use this method for publishing the execution result to the client,
-        // this method takes the ``execution_counter`` as first argument,
-        // the data to publish (mime type data) as second argument and metadata
-        // as third argument.
-        // Replace "Hello World !!" by what you want to be displayed under the execution cell
-        nl::json pub_data;
-        pub_data["text/plain"] = "Hello World !!";
+        auto repl_result = [&]() -> std::expected<std::string, std::string> {
+            try
+            {
+                return m_repl.execute(code);
+            }
+            catch (const std::exception& e)
+            {
+                return std::unexpected(std::string(e.what()));
+            }
+            catch (...)
+            {
+                return std::unexpected(std::string("Unknown MicroHs error"));
+            }
+        }();
 
-        // If silent is set to true, do not publish anything!
-        // Otherwise:
-        // Publish the execution result
-        publish_execution_result(execution_counter, std::move(pub_data), nl::json::object());
+        if (!repl_result.has_value())
+        {
+            const std::string& error_msg = repl_result.error();
+            const std::vector<std::string> traceback{error_msg};
+            publish_execution_error("RuntimeError", error_msg, traceback);
 
-        // You can also use this method for publishing errors to the client, if the code
-        // failed to execute
-        // publish_execution_error(error_name, error_value, error_traceback);
-        publish_execution_error("TypeError", "123", {"!@#$", "*(*"});
+            nl::json traceback_json = nl::json::array();
+            traceback_json.push_back(error_msg);
 
-        // Use publish_stream to publish a stream message or error:
-        publish_stream("stdout", "I am publishing a message");
-        publish_stream("stderr", "Error!");
+            cb(xeus::create_error_reply(error_msg, "RuntimeError", traceback_json));
+            return;
+        }
 
-        // Use Helpers that create replies to the server to be returned
-        cb(xeus::create_successful_reply(/*payload, user_expressions*/));
-        // Or in case of error:
-        // cb(xeus::create_error_reply(evalue, ename, trace_back));
+        if (!config.silent)
+        {
+            const std::string& output = repl_result.value();
+            if (!output.empty())
+            {
+                nl::json pub_data;
+                pub_data["text/plain"] = output;
+                publish_execution_result(execution_counter, std::move(pub_data), nl::json::object());
+            }
+        }
+
+        cb(xeus::create_successful_reply(nl::json::array(), nl::json::object()));
     }
 
     void interpreter::configure_impl()

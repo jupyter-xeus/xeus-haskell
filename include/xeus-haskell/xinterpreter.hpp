@@ -22,6 +22,7 @@
 
 #include "xeus_haskell_config.hpp"
 #include "xeus/xinterpreter.hpp"
+#include "xeus-haskell/mhs_repl.hpp"
 
 
 namespace nl = nlohmann;
@@ -58,6 +59,8 @@ namespace xeus_haskell
 
         void shutdown_request_impl() override;
 
+    private:
+        MicroHsRepl m_repl;
     };
 }
 
