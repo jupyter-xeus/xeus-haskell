@@ -54,6 +54,25 @@ int main() {
         expect(that % res.value().find("hello from repl") != std::string::npos);
     };
 
+    "definitions persist"_test = [] {
+        announce("definitions persist");
+        auto& repl = repl_instance();
+        auto def_result = repl.execute("xh_def_test = 40 + 2");
+        expect(def_result.has_value());
+
+        auto res = repl.execute("xh_def_test");
+        expect(res.has_value());
+        expect_trim_eq(res.value(), "42");
+    };
+
+    "expressions evaluate"_test = [] {
+        announce("expressions evaluate");
+        auto& repl = repl_instance();
+        auto res = repl.execute("let (a, b) = (10, 20) in a + b");
+        expect(res.has_value());
+        expect_trim_eq(res.value(), "30");
+    };
+
     "measure warm-up timing"_test = [] {
         announce("measure warm-up timing");
         auto& repl = repl_instance();
