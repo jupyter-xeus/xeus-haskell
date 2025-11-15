@@ -100,6 +100,5 @@ jobs:
             -DCMAKE_INSTALL_PREFIX=$PREFIX                    \
             -DCMAKE_FIND_ROOT_PATH_MODE_PACKAGE=ON
 
-          cmake --build $BUILD_DIR
-          cmake --install $BUILD_DIR
+          emmake make -C $BUILD_DIR install
 
