@@ -69,6 +69,7 @@ jobs:
           jupyter lite build \
               --XeusAddon.prefix=$PREFIX \
               --XeusAddon.mounts=$MHSDIR:$MHSDIR \
+              --contents notebooks/introduction_to_haskell.ipynb \
               --output-dir dist
 
       - name: Upload artifact
