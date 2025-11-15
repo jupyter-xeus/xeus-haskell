@@ -9,4 +9,5 @@ dependencies:
   - cxx-compiler
   - jupyterlite
   - jupyterlite-xeus
+  - jupyter_server
   - emscripten_emscripten-wasm32==3.1.73
