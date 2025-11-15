@@ -1,6 +1,6 @@
 # ![xeus-haskell](xeus-logo.svg)
 
-[![Build Status](https://github.com/tani/xeus-haskell/actions/workflows/main.yml/badge.svg)](https://github.com/tani/xeus-haskell/actions/workflows/main.y
+[![Build Status](https://github.com/tani/xeus-haskell/actions/workflows/main.yml/badge.svg)](https://github.com/tani/xeus-haskell/actions/workflows/main.yml)
 
 `xeus-haskell` is a Jupyter kernel for haskell based on the native implementation of the
 Jupyter protocol [xeus](https://github.com/jupyter-xeus/xeus).
