@@ -12,7 +12,7 @@ platforms = []
 #
 # docs
 [feature.docs]
-platforms = ["linux-64", "osx-arm64"]
+platforms = ["linux-64", "linux-aarch64", "osx-arm64"]
 channels = ["conda-forge"]
 
 [feature.docs.dependencies]
@@ -27,7 +27,7 @@ mkdocs-mermaid2-plugin = ">=1.2.3, <2"
 #
 
 [feature.dev]
-platforms = ["linux-64", "osx-arm64"]
+platforms = ["linux-64", "linux-aarch64", "osx-arm64"]
 channels = ["conda-forge"]
 
 [feature.dev.dependencies]
@@ -41,7 +41,6 @@ pytest = "*"
 jupyter_kernel_test = ">=0.4.3"
 nbval = "*"
 pytest-rerunfailures = "*"
-micromamba = "*"
 jupyterlab = "*"
 
 [feature.dev.tasks]
@@ -54,10 +53,10 @@ cmake
   -DCMAKE_PREFIX_PATH="$CONDA_PREFIX"
   -DCMAKE_FIND_ROOT_PATH_MODE_PACKAGE=ON
 """
-build = "cmake --build build"
-install = "cmake --install build"
-ctest = "ctest --test-dir build"
-pytest = "pytest"
+build = "cmake --build build --config Release"
+install = "cmake --install build --config Release"
+ctest = "ctest --test-dir build --build-config Release --output-on-failure"
+pytest = "pytest test --reruns 5"
 serve = "jupyter lab"
 
 #
@@ -107,6 +106,7 @@ jupyter lite build
   --XeusAddon.prefix=$PREFIX
   --XeusAddon.mounts=$MHSDIR:$MHSDIR
   --contents notebooks/introduction_to_haskell.ipynb
+  --output-dir dist
 """
 
 #

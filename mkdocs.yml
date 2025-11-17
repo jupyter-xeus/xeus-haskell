@@ -1,0 +1,7 @@
+site_name: Xeus-Haskell
+site_url: https://tani.github.io/xeus-haskell/
+theme:
+  name: material
+plugins:
+  - search
+  - mermaid2

@@ -17,29 +17,30 @@ minutes of past meetings can be found on our
 
 ## Setting up a development environment
 
-First, you need to fork the project. Then setup your environment:
+First, fork the project and install [Pixi](https://pixi.sh/) if you have not
+already:
 
 ```bash
-# create a new conda environment
-conda create -f environment-dev.yml
-conda activate xeus-haskell
-
-# download xeus-haskell from your GitHub fork
-git clone https://github.com/<your-github-username>/xeus-haskell.git
+curl -fsSL https://pixi.sh/install.sh | sh
 ```
 
-You may also want to install a C++ compiler, and cmake from conda if they are not
-available on your system.
+Then clone your fork and create the development environment using Pixi:
+
+```bash
+git clone https://github.com/<your-github-username>/xeus-haskell.git
+cd xeus-haskell
+pixi run -e dev prebuild
+```
+
+The `dev` environment defined in `pixi.toml` pulls in the toolchain (CMake,
+compilers, pytest, etc.) so you do not need to manage those dependencies
+manually.
 
 ## Building and installing xeus-haskell
 
 ```bash
-# Create a directory for building
-mkdir build && cd build
-# Generate the makefile with cmake
-cmake -D CMAKE_BUILD_TYPE=Release -D CMAKE_PREFIX_PATH=$CONDA_PREFIX -D CMAKE_INSTALL_PREFIX=$CONDA_PREFIX -D CMAKE_INSTALL_LIBDIR=lib ..
-# Build and install
-make install -j2
+pixi run -e dev build
+pixi run -e dev install
 ```
 
 ## Running the tests
@@ -47,6 +48,6 @@ make install -j2
 To run Python tests, from the build directory, type
 
 ```bash
-cd ../test
-pytest . -vvv
+pixi run -e dev ctest
+pixi run -e dev pytest
 ```

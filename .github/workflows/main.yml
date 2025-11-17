@@ -22,39 +22,28 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Install micromamba
-        uses: mamba-org/setup-micromamba@v1
+      - name: Setup Pixi
+        uses: prefix-dev/setup-pixi@v0
         with:
-          environment-file: environment-dev.yml
-          cache-environment: true
-          cache-downloads: true
+          cache: true
 
-      - name: Make build directory
-        run: mkdir build
-
-      - name: Configure cmake
-        shell: bash -l {0}
-        run: |
-          cmake .. \
-           -DCMAKE_BUILD_TYPE=Release \
-           -DCMAKE_PREFIX_PATH=$CONDA_PREFIX \
-           -DCMAKE_INSTALL_PREFIX=$CONDA_PREFIX
-        working-directory: build
+      - name: Configure CMake
+        shell: bash
+        run: pixi run -e dev prebuild
 
       - name: Build & Install
-        shell: bash -l {0}
-        run: cmake --build . --target install --config Release
-        working-directory: build
+        shell: bash
+        run: |
+          pixi run -e dev build
+          pixi run -e dev install
 
       - name: Run C++ Test
-        shell: bash -l {0}
-        run: ctest -C Release --test-dir . --output-on-failure
-        working-directory: build
+        shell: bash
+        run: pixi run -e dev ctest
 
       - name: Run Python Test
-        shell: bash -l {0}
-        run: pytest . --reruns 5
-        working-directory: test
+        shell: bash
+        run: pixi run -e dev pytest
 
 
   emscripten_wasm:
@@ -69,36 +58,23 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Install micromamba
-        uses: mamba-org/setup-micromamba@v1
+      - name: Setup Pixi
+        uses: prefix-dev/setup-pixi@v0
         with:
-          environment-file: environment-wasm-build.yml
-          environment-name: xeus-haskell-wasm-build
-          cache-environment: true
-          cache-downloads: true
+          cache: true
+
+      - name: Prepare WASM host
+        shell: bash
+        run: pixi install -e wasm-host
+
+      - name: Configure
+        shell: bash
+        run: pixi run -e wasm-build prebuild
 
       - name: Build
-        shell: bash -l {0}
-        run: |
-          micromamba create -f environment-wasm-host.yml --platform=emscripten-wasm32
+        shell: bash
+        run: pixi run -e wasm-build build
 
-          export EMPACK_PREFIX=$MAMBA_ROOT_PREFIX/envs/xeus-haskell-wasm-build
-          export PREFIX=$MAMBA_ROOT_PREFIX/envs/xeus-haskell-wasm-host
-          export CMAKE_PREFIX_PATH=$PREFIX
-          export CMAKE_SYSTEM_PREFIX_PATH=$PREFIX
-          export BUILD_DIR=/tmp/xeus-haskell-build
-
-          mkdir $BUILD_DIR
-
-          unset CFLAGS CXXFLAGS LDFLAGS
-
-          emcmake cmake \
-            -S . \
-            -B $BUILD_DIR \
-            -DCMAKE_BUILD_TYPE=Release                        \
-            -DCMAKE_PREFIX_PATH=$PREFIX                       \
-            -DCMAKE_INSTALL_PREFIX=$PREFIX                    \
-            -DCMAKE_FIND_ROOT_PATH_MODE_PACKAGE=ON
-
-          emmake make -C $BUILD_DIR install
-
+      - name: Install
+        shell: bash
+        run: pixi run -e wasm-build install

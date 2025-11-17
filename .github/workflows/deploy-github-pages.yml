@@ -27,50 +27,30 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Install mamba
-        uses: mamba-org/setup-micromamba@v2
+      - name: Setup Pixi
+        uses: prefix-dev/setup-pixi@v0
         with:
-          environment-file: environment-wasm-build.yml
-          init-shell: bash
-          environment-name: xeus-haskell-wasm-build
+          cache: true
+
+      - name: Prepare WASM host
+        shell: bash
+        run: pixi install -e wasm-host
+
+      - name: Configure
+        shell: bash
+        run: pixi run -e wasm-build prebuild
 
       - name: Build
-        shell: bash -l {0}
-        run: |
-          micromamba create -f environment-wasm-host.yml --platform=emscripten-wasm32
+        shell: bash
+        run: pixi run -e wasm-build build
 
-          export EMPACK_PREFIX=$MAMBA_ROOT_PREFIX/envs/xeus-haskell-wasm-build
-          export PREFIX=$MAMBA_ROOT_PREFIX/envs/xeus-haskell-wasm-host
-          export CMAKE_PREFIX_PATH=$PREFIX
-          export CMAKE_SYSTEM_PREFIX_PATH=$PREFIX
-          export BUILD_DIR=/tmp/xeus-haskell-build
-
-          mkdir $BUILD_DIR
-
-          unset CFLAGS CXXFLAGS LDFLAGS
-
-          emcmake cmake \
-            -S . \
-            -B $BUILD_DIR \
-            -DCMAKE_BUILD_TYPE=Release                        \
-            -DCMAKE_PREFIX_PATH=$PREFIX                       \
-            -DCMAKE_INSTALL_PREFIX=$PREFIX                    \
-            -DCMAKE_FIND_ROOT_PATH_MODE_PACKAGE=ON
-
-          emmake make -C $BUILD_DIR install
+      - name: Install
+        shell: bash
+        run: pixi run -e wasm-build install
 
       - name: Jupyter Lite integration
-        shell: bash -l {0}
-        run: |
-          export PREFIX=$MAMBA_ROOT_PREFIX/envs/xeus-haskell-wasm-host
-          export BUILD_DIR=/tmp/xeus-haskell-build
-          export MHSDIR=$BUILD_DIR/microhs/src/MicroHsProject
-
-          jupyter lite build \
-              --XeusAddon.prefix=$PREFIX \
-              --XeusAddon.mounts=$MHSDIR:$MHSDIR \
-              --contents notebooks/introduction_to_haskell.ipynb \
-              --output-dir dist
+        shell: bash
+        run: pixi run -e wasm-build generate
 
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v4
