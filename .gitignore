@@ -41,12 +41,13 @@ share/jupyter/kernels/xhaskell/kernel.json
 # Build directory
 build/
 wasm-build/
-
-bld
+_output/
 
 # pixi environments
 .pixi
 *.egg-info
+
 # pixi environments
 .pixi/*
 !.pixi/config.toml
+

@@ -32,7 +32,7 @@ pixi run -e default serve # JupyterLab is ready!
 
 git clone https://github.com/tani/xeus-haskell
 pushd xeus-haskell
-pixi run -e wasm-host prebuild
+pixi install -e wasm-host
 pixi run -e wasm-build prebuild
 pixi run -e wasm-build build
 # pixi run -e wasm-build fix-emscripten-links # You may need this
