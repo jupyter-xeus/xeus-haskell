@@ -68,8 +68,7 @@ emscripten_emscripten-wasm32 = "==3.1.73"
 
 [feature.wasm-build.tasks]
 prebuild = """
-export PREFIX="$CONDA_PREFIX/../wasm-host"
-unset CFLAGS CXXFLAGS LDFLAGS;
+export PREFIX="$CONDA_PREFIX/../wasm-host";
 emcmake cmake
   -S $PWD
   -B wasm-build
@@ -77,6 +76,9 @@ emcmake cmake
   -DCMAKE_INSTALL_PREFIX="$PREFIX"
   -DCMAKE_PREFIX_PATH="$PREFIX"
   -DCMAKE_FIND_ROOT_PATH_MODE_PACKAGE=ON
+  -DCMAKE_EXE_LINKER_FLAGS=""
+  -DCMAKE_SHARED_LINKER_FLAGS=""
+  -DCMAKE_SYSTEM_NAME=Emscripten
 """
 build = "emmake make -C wasm-build"
 install = "emmake make -C wasm-build install"
