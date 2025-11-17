@@ -16,6 +16,10 @@ set(CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake;${CMAKE_MODULE_PATH}")
 
 set(XEUS_HASKELL_INCLUDE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/include)
 
+if(NOT DEFINED XEUS_HASKELL_MICROHS_VERSION)
+    set(XEUS_HASKELL_MICROHS_VERSION "v0.14.23.1" CACHE STRING "MicroHs tag to fetch")
+endif()
+
 # Versionning
 # ===========
 
@@ -229,7 +233,10 @@ macro(xeus_haskell_create_target target_name linkage output_name)
                           SOVERSION ${XEUS_HASKELL_VERSION_MAJOR}
                           OUTPUT_NAME "lib${output_name}")
 
-    target_compile_definitions(${target_name} PUBLIC "XEUS_HASKELL_EXPORTS")
+    target_compile_definitions(${target_name}
+                               PUBLIC
+                               XEUS_HASKELL_EXPORTS
+                               XEUS_HASKELL_MICROHS_VERSION="${XEUS_HASKELL_MICROHS_VERSION}")
 
     target_compile_features(${target_name} PRIVATE cxx_std_17)
 

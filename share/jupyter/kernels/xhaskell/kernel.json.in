@@ -1,5 +1,5 @@
 {
-  "display_name": "Haskell (xhaskell/MicroHs)",
+  "display_name": "Haskell (MicroHs @XEUS_HASKELL_MICROHS_VERSION@)",
   "argv": [
       "@XEUS_HASKELL_KERNELSPEC_PATH@xhaskell",
       "-f",

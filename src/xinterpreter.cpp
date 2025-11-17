@@ -148,7 +148,7 @@ namespace xeus_haskell
         const std::string  implementation = "xhaskell";
         const std::string  implementation_version = XEUS_HASKELL_VERSION;
         const std::string  language_name = "haskell";
-        const std::string  language_version = "v0.14.23.1";
+        const std::string  language_version = XEUS_HASKELL_MICROHS_VERSION;
         const std::string  language_mimetype = "text/x-haskell";;
         const std::string  language_file_extension = "hs";;
         const std::string  language_pygments_lexer = "";

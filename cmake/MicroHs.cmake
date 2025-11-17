@@ -1,8 +1,7 @@
 include(ExternalProject)
 
 function(fetch_and_build_microhs MICROHS_BIN MICROHS_SRC_DIR)
-    set(MICROHS_VERSION "v0.14.23.1")
-    set(MICROHS_URL "https://github.com/augustss/MicroHs/archive/refs/tags/${MICROHS_VERSION}.tar.gz")
+    set(MICROHS_URL "https://github.com/augustss/MicroHs/archive/refs/tags/${XEUS_HASKELL_MICROHS_VERSION}.tar.gz")
     set(MICROHS_PREFIX "${CMAKE_BINARY_DIR}/microhs")
     if(WIN32)
       set(MICROHS_MAKE "nmake")
