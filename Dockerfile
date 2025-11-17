@@ -2,7 +2,7 @@ FROM ghcr.io/prefix-dev/pixi:latest
 
 WORKDIR /opt/xeus-haskell
 COPY pixi.toml pixi.lock ./
-RUN pixi install -e dev
+RUN pixi install -e default
 
 ENV CONDA_PREFIX=/opt/xeus-haskell/.pixi/envs/dev
 ENV PATH="${CONDA_PREFIX}/bin:${PATH}"

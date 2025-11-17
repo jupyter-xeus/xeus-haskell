@@ -29,21 +29,21 @@ jobs:
 
       - name: Configure CMake
         shell: bash
-        run: pixi run prebuild
+        run: pixi run -e default prebuild
 
       - name: Build & Install
         shell: bash
         run: |
-          pixi run build
-          pixi run install
+          pixi run -e default build
+          pixi run -e default install
 
       - name: Run C++ Test
         shell: bash
-        run: pixi run ctest
+        run: pixi run -e default ctest
 
       - name: Run Python Test
         shell: bash
-        run: pixi run pytest
+        run: pixi run -e default pytest
 
 
   emscripten_wasm:
