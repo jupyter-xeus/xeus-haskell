@@ -48,10 +48,6 @@ jobs:
         shell: bash
         run: pixi run -e wasm-build install
 
-      - name: Fix emscripten links
-        shell: bash
-        run: pixi run -e wasm-build fix-emscripten-links
-
       - name: Jupyter Lite integration
         shell: bash
         run: pixi run -e wasm-build generate
