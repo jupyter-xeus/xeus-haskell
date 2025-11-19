@@ -17,7 +17,7 @@ Since this project is not yet available on Conda-forge or Emscripten-forge, you 
 ### For Native JupyterLab
 
 ~~~bash
-git clone https://github.com/tani/xeus-haskell
+git clone https://github.com/jupyter-xeus/xeus-haskell
 cd xeus-haskell
 pixi run -e default prebuild
 pixi run -e default build
@@ -28,7 +28,7 @@ pixi run -e default serve # JupyterLab is ready!
 ### For WebAssembly JupyterLite
 
 ~~~bash
-git clone https://github.com/tani/xeus-haskell
+git clone https://github.com/jupyter-xeus/xeus-haskell
 cd xeus-haskell
 pixi install -e prebuild
 pixi run -e wasm-build prebuild
