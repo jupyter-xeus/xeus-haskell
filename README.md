@@ -16,7 +16,7 @@ Jupyter protocol [xeus](https://github.com/jupyter-xeus/xeus).
 # Install Pixi
 # curl -fsSL https://pixi.sh/install.sh | sh
 
-git clone https://github.com/tani/xeus-haskell
+git clone https://github.com/jupyter-xeus/xeus-haskell
 pushd xeus-haskell
 pixi run -e default prebuild
 pixi run -e default build
@@ -30,7 +30,7 @@ pixi run -e default serve # JupyterLab is ready!
 # Install Pixi
 # curl -fsSL https://pixi.sh/install.sh | sh
 
-git clone https://github.com/tani/xeus-haskell
+git clone https://github.com/jupyter-xeus/xeus-haskell
 pushd xeus-haskell
 pixi install -e wasm-host
 pixi run -e wasm-build prebuild
