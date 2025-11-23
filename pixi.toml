@@ -95,7 +95,7 @@ export MHS_LIBRARY_PATH="$PREFIX/usr/lib/haskell-packages/microhs";
 jupyter lite serve
   --XeusAddon.prefix="$PREFIX"
   --XeusAddon.mounts="$MHSDIR:/share/microhs"
-  --contents notebooks/introduction_to_haskell.ipynb
+  --contents notebooks
 """
 serve-with-example = """
 export PREFIX=$CONDA_PREFIX/../wasm-host;
@@ -104,7 +104,7 @@ jupyter lite serve
   --XeusAddon.prefix="$PREFIX"
   --XeusAddon.mounts="$MHSDIR:/share/microhs"
   --XeusAddon.mounts="$PWD/src/XHaskell:/usr/lib/haskell-packages/microhs/XHaskell"
-  --contents notebooks/introduction_to_haskell.ipynb
+  --contents notebooks
 """
 generate = """
 export PREFIX=$CONDA_PREFIX/../wasm-host;
@@ -113,7 +113,7 @@ jupyter lite build
   --XeusAddon.prefix="$PREFIX"
   --XeusAddon.mounts="$MHSDIR:/share/microhs"
   --XeusAddon.mounts="$PWD/src/XHaskell:/usr/lib/haskell-packages/microhs/XHaskell"
-  --contents notebooks/introduction_to_haskell.ipynb
+  --contents notebooks
   --output-dir dist
 """
 
