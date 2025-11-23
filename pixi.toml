@@ -94,7 +94,7 @@ export MHSDIR="$PREFIX/share/microhs";
 jupyter lite serve
   --XeusAddon.prefix="$PREFIX"
   --XeusAddon.mounts="$MHSDIR:/share/microhs"
-  --contents notebooks/introduction_to_haskell.ipynb
+  --contents notebooks
 """
 generate = """
 export PREFIX=`realpath $CONDA_PREFIX/../wasm-host`;
@@ -102,7 +102,7 @@ export MHSDIR="$PREFIX/share/microhs";
 jupyter lite build
   --XeusAddon.prefix="$PREFIX"
   --XeusAddon.mounts="$MHSDIR:/share/microhs"
-  --contents notebooks/introduction_to_haskell.ipynb
+  --contents notebooks
   --output-dir dist
 """
 debug = """
