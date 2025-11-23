@@ -40,6 +40,55 @@ pixi run -e wasm-build install
 pixi run -e wasm-build serve # JupyterLite is ready!
 ```
 
+### Start Jupyter Lite with your library (Experimental feature)
+
+To use your libraries, you mount the local directory (for example, `$PWD/example`) to `/usr/lib/haskell-packages/microhs`.
+The directory structure is as follows:
+
+```
+/usr/lib/haskell-packages/microhs (local: $PWD/example)
+|
++-Example
+| |
+| +-Hello.hs (`Example.Hello` module)
+|
++-Math
+| |
+| +-Fibonacci.hs (`Math.Fibonacci` module)
+|
+.
+.
+.
+```
+
+The recipe is as follows:
+
+```
+pushd xeus-haskell
+pixi install -e wasm-host
+pixi run -e wasm-build prebuild
+pixi run -e wasm-build build
+pixi run -e wasm-build install
+pixi shell -e wasm-build
+pixi run -e wasm-build jupyter lite serve \
+  --XeusAddon.prefix="$PWD/.envs/wasm-host" \
+  --XeusAddon.mounts="$PWD/.envs/wasm-host/share/microhs:/share/microhs" \
+  --XeusAddon.mounts="$PWD/example:/usr/lib/haskell-packages/microhs" \
+  --contents notebooks/introduction_to_haskell.ipynb \
+```
+
+#### Generate Jupyter Lite as a static webpage
+
+You can generate Jupyter Lite as a static webpage with `jupyter lite generate` command.
+
+```
+pixi run -e wasm-build jupyter lite generate \
+  --XeusAddon.prefix="$PWD/.envs/wasm-host" \
+  --XeusAddon.mounts="$PWD/.envs/wasm-host/share/microhs:/share/microhs" \
+  # --XeusAddon.mounts="$PWD/example:/usr/lib/haskell-packages/microhs" \
+  --contents notebooks/introduction_to_haskell.ipynb \
+```
+
 ## Trying it online
 
 To try out xeus-haskell interactively in your web browser, just click on the link:

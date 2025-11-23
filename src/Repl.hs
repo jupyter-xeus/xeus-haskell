@@ -13,10 +13,12 @@ module Repl (
 import qualified Prelude ()
 import MHSPrelude
 
+import System.Environment (lookupEnv)
 import Control.Exception (try, SomeException, displayException)
 import Data.IORef
 import Data.List (foldl', intercalate, nub)
-import Data.Maybe (isJust)
+import Data.Maybe (isJust, maybeToList)
+import Data.Text (pack, unpack)
 import Foreign.C.String (CString, peekCString, peekCStringLen, newCString)
 import Foreign.C.Types (CInt, CSize)
 import Foreign.Marshal.Alloc (free)
@@ -29,7 +31,7 @@ import MicroHs.CompileCache (cachedModules)
 import MicroHs.Desugar (LDef)
 import MicroHs.Exp (Exp(Var))
 import MicroHs.Expr (EModule(..), EDef(..), ImpType(..), patVars)
-import MicroHs.Flags (Flags, defaultFlags)
+import MicroHs.Flags (Flags, defaultFlags, paths)
 import MicroHs.Ident (Ident, mkIdent, qualIdent, unQualIdent)
 import qualified MicroHs.IdentMap as IMap
 import MicroHs.Parse (parse, pExprTop, pTopModule)
@@ -71,7 +73,16 @@ data ReplCtx = ReplCtx
 initialCtx :: String -> IO ReplCtx
 initialCtx dir = do
   let flags = defaultFlags dir
-  pure ReplCtx { rcFlags = flags, rcCache = emptyCache, rcDefs = [] }
+  mpath <- lookupEnv "MHS_LIBRARY_PATH"
+  let rpath = maybe "." id mpath
+      extra = splitColon rpath
+      rcFlags = flags { paths = paths flags ++ extra }
+  pure ReplCtx { rcFlags = rcFlags, rcCache = emptyCache, rcDefs = [] }
+
+splitColon :: String -> [String]
+splitColon s = case break (== ':') s of
+  (a, [])     -> [a]
+  (a, _:rest) -> a : splitColon rest
 
 defsSource :: [StoredDef] -> String
 defsSource = concatMap sdCode

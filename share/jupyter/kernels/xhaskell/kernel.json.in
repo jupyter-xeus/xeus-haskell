@@ -10,6 +10,7 @@
     "debugger": false
   },
   "env": {
-    "MHSDIR": "@CMAKE_INSTALL_PREFIX@/share/microhs"
+    "MHSDIR": "@CMAKE_INSTALL_PREFIX@/share/microhs",
+    "MHS_LIBRARY_PATH": "@CMAKE_INSTALL_PREFIX@/usr/lib/haskell-packages/microhs:/usr/lib/lib/haskell-packages/microhs"
   }
 }

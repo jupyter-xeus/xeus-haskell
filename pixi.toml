@@ -72,7 +72,7 @@ cd "$CONDA_PREFIX/__clobbers__/emscripten_emscripten-wasm32/bin" &&
 sh -c 'find . -type l -exec ln -sf ../../../opt/emsdk/upstream/bin/{} {} \\;'
 """
 prebuild = """
-export PREFIX=`realpath $CONDA_PREFIX/../wasm-host`;
+export PREFIX=$CONDA_PREFIX/../wasm-host;
 emcmake cmake
   -S $PWD
   -B wasm-build
@@ -89,30 +89,31 @@ emcmake cmake
 build = "emmake make -C wasm-build"
 install = "emmake make -C wasm-build install"
 serve = """
-export PREFIX=`realpath $CONDA_PREFIX/../wasm-host`;
+export PREFIX=$CONDA_PREFIX/../wasm-host;
 export MHSDIR="$PREFIX/share/microhs";
+export MHS_LIBRARY_PATH="$PREFIX/usr/lib/haskell-packages/microhs";
 jupyter lite serve
   --XeusAddon.prefix="$PREFIX"
   --XeusAddon.mounts="$MHSDIR:/share/microhs"
   --contents notebooks
 """
+serve-with-example = """
+export PREFIX=$CONDA_PREFIX/../wasm-host;
+export MHSDIR="$PREFIX/share/microhs";
+jupyter lite serve
+  --XeusAddon.prefix="$PREFIX"
+  --XeusAddon.mounts="$MHSDIR:/share/microhs"
+  --XeusAddon.mounts="$PWD/example:/usr/lib/haskell-packages/microhs"
+  --contents notebooks/introduction_to_haskell.ipynb
+"""
 generate = """
-export PREFIX=`realpath $CONDA_PREFIX/../wasm-host`;
+export PREFIX=$CONDA_PREFIX/../wasm-host;
 export MHSDIR="$PREFIX/share/microhs";
 jupyter lite build
   --XeusAddon.prefix="$PREFIX"
   --XeusAddon.mounts="$MHSDIR:/share/microhs"
   --contents notebooks
   --output-dir dist
-"""
-debug = """
-rm -rf wasm-build;
-pixi install -e wasm-host;
-pixi run -e wasm-build prebuild;
-pixi run -e wasm-build build;
-pixi run -e wasm-build install;
-pixi run -e wasm-build fix-emscripten-links;
-pixi run -e wasm-build serve;
 """
 
 #
