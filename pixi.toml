@@ -95,6 +95,7 @@ export MHS_LIBRARY_PATH="$PREFIX/usr/lib/haskell-packages/microhs";
 jupyter lite serve
   --XeusAddon.prefix="$PREFIX"
   --XeusAddon.mounts="$MHSDIR:/share/microhs"
+  --XeusAddon.mounts="$PWD/src/XHaskell:/usr/lib/haskell-packages/microhs/XHaskell"
   --contents notebooks
 """
 serve-with-example = """
