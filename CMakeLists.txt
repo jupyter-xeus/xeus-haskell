@@ -420,3 +420,11 @@ if(NOT EMSCRIPTEN)
     target_link_libraries(test_mhs_repl PRIVATE mhs_repl_lib Boost::ut)
     add_test(NAME test_mhs_repl COMMAND test_mhs_repl)
 endif()
+
+# XHaskell library
+# ===================
+install(
+    DIRECTORY ${CMAKE_SOURCE_DIR}/src/XHaskell/
+    DESTINATION usr/lib/haskell-packages/microhs/XHaskell
+)
+

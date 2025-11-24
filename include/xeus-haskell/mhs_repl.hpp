@@ -10,6 +10,7 @@ struct repl_result
     bool ok;
     std::string output;
     std::string error;
+    std::string mime_type = "text/plain";
 };
 
 class MicroHsRepl {

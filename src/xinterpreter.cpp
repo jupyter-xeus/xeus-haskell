@@ -69,7 +69,7 @@ namespace xeus_haskell
             if (!output.empty())
             {
                 nl::json pub_data;
-                pub_data["text/plain"] = output;
+                pub_data[exec_result.mime_type] = output;
                 publish_execution_result(execution_counter, std::move(pub_data), nl::json::object());
             }
         }

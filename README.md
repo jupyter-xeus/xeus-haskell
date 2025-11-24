@@ -73,8 +73,25 @@ pixi shell -e wasm-build
 pixi run -e wasm-build jupyter lite serve \
   --XeusAddon.prefix="$PWD/.envs/wasm-host" \
   --XeusAddon.mounts="$PWD/.envs/wasm-host/share/microhs:/share/microhs" \
-  --XeusAddon.mounts="$PWD/example:/usr/lib/haskell-packages/microhs" \
+  --XeusAddon.mounts="$PWD/example/Example:/usr/lib/haskell-packages/microhs/Example" \
   --contents notebooks/introduction_to_haskell.ipynb \
+```
+
+#### HTML Output (Experimental feature)
+
+```haskell
+import XHaskell.Display
+
+newtype HTMLString = HTMLString String
+instance Display HTMLString where
+  display (HTMLString html) = DisplayData {
+      mimeType = "text/html",
+      content  = html
+  }
+instance Display String where
+  display str = DisplayData "text/plain"
+
+putStr $ show (display (HTMLString "<p style=\"color: red\">foo</p>"))
 ```
 
 #### Generate Jupyter Lite as a static webpage

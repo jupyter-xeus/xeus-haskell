@@ -2,7 +2,6 @@
 #include <string>
 #include <string_view>
 #include <cstdio>
-#include <stdexcept>
 
 #ifdef _WIN32
 #include <windows.h>
@@ -22,9 +21,48 @@ namespace {
 
 bool mhs_repl_initialized = false;
 
+// Helper struct to hold protocol parsing results
+struct ParsedOutput {
+    std::string mime_type;
+    std::string content;
+};
+
+// Function to parse the format: STX(0x02) ... US(0x1F) ... ETX(0x03)
+ParsedOutput parse_protocol_output(std::string_view raw_output) {
+    const char STX = '\x02';
+    const char US  = '\x1F';
+    const char ETX = '\x03';
+
+    // Minimum length check: STX + US + ETX (at least 3 chars)
+    // Must start with STX and end with ETX
+    if (raw_output.size() >= 3 &&
+        raw_output.front() == STX &&
+        raw_output.back() == ETX) {
+
+        // Search for US (Unit Separator) between STX and ETX
+        // Search range starts from index 1 (after STX)
+        size_t us_pos = raw_output.find(US, 1);
+
+        // If US is found within the valid range, parsing succeeds
+        if (us_pos != std::string::npos && us_pos < raw_output.size() - 1) {
+            // MIME type: substring from index 1 (after STX) to before US
+            std::string_view mime = raw_output.substr(1, us_pos - 1);
+
+            // Content: substring from after US to before ETX
+            // Length = (total size) - (US position + 1) - (1 for ETX)
+            std::string_view content = raw_output.substr(us_pos + 1, raw_output.size() - us_pos - 2);
+
+            return {std::string(mime), std::string(content)};
+        }
+    }
+
+    // If protocol does not match, treat as standard text/plain
+    return {"text/plain", std::string(raw_output)};
+}
+
 std::string capture_stdout(std::function<void()> fn) {
 #ifdef _WIN32
-    // Windows implementation (Fixed to capture Win32 and C runtime stdout)
+    // Windows implementation (Captures both Win32 and C runtime stdout)
     HANDLE hRead, hWrite;
     SECURITY_ATTRIBUTES sa = { sizeof(SECURITY_ATTRIBUTES), NULL, TRUE };
 
@@ -180,9 +218,10 @@ MicroHsRepl::~MicroHsRepl() {
 }
 
 repl_result MicroHsRepl::execute(std::string_view code) {
-    std::string output;
+    std::string raw_output;
+
     try {
-        output = capture_stdout([&]() {
+        raw_output = capture_stdout([&]() {
             std::string code_str(code);
             char* err = nullptr;
             intptr_t rc = mhs_repl_execute(
@@ -200,9 +239,19 @@ repl_result MicroHsRepl::execute(std::string_view code) {
             if (err) mhs_repl_free_cstr(err);
         });
     } catch (const std::runtime_error& e) {
-        return {false, std::string(), std::string(e.what())};
+        // Return default mime_type (text/plain) on error
+        return {false, std::string(), std::string(e.what()), "text/plain"};
     }
-    return {true, std::move(output), std::string()};
+
+    // Parse the captured output to separate MIME type and content
+    ParsedOutput parsed = parse_protocol_output(raw_output);
+
+    return {
+        true,
+        std::move(parsed.content),    // Parsed content
+        std::string(),                // No error
+        std::move(parsed.mime_type)   // Parsed MIME type (or "text/plain")
+    };
 }
 
 } // namespace xeus_haskell

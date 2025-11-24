@@ -103,7 +103,7 @@ export MHSDIR="$PREFIX/share/microhs";
 jupyter lite serve
   --XeusAddon.prefix="$PREFIX"
   --XeusAddon.mounts="$MHSDIR:/share/microhs"
-  --XeusAddon.mounts="$PWD/example:/usr/lib/haskell-packages/microhs"
+  --XeusAddon.mounts="$PWD/src/XHaskell:/usr/lib/haskell-packages/microhs/XHaskell"
   --contents notebooks/introduction_to_haskell.ipynb
 """
 generate = """
@@ -112,6 +112,7 @@ export MHSDIR="$PREFIX/share/microhs";
 jupyter lite build
   --XeusAddon.prefix="$PREFIX"
   --XeusAddon.mounts="$MHSDIR:/share/microhs"
+  --XeusAddon.mounts="$PWD/src/XHaskell:/usr/lib/haskell-packages/microhs/XHaskell"
   --contents notebooks
   --output-dir dist
 """
