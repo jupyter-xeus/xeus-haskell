@@ -49,6 +49,35 @@ int main() {
         expect(that % res.output.find("hello from repl") != std::string::npos);
     };
 
+    "leading comment expressions execute"_test = [] {
+        auto& repl = repl_instance();
+        auto res = repl.execute("-- Hello World\nprint \"Hello World!\"");
+        expect(res.ok) << res.error;
+        expect(that % res.output.find("Hello World!") != std::string::npos);
+    };
+
+    "leading block comment expressions execute"_test = [] {
+        auto& repl = repl_instance();
+        const auto code = R"({- block
+comment -}
+print "Hello World!")";
+        auto res = repl.execute(code);
+        expect(res.ok) << res.error;
+        expect(that % res.output.find("Hello World!") != std::string::npos);
+    };
+
+    "comments with blank lines before expression execute"_test = [] {
+        auto& repl = repl_instance();
+        const auto code = R"(-- first
+
+-- second
+
+print "Hello World!")";
+        auto res = repl.execute(code);
+        expect(res.ok) << res.error;
+        expect(that % res.output.find("Hello World!") != std::string::npos);
+    };
+
     "definitions persist"_test = [] {
         auto& repl = repl_instance();
         auto def_result = repl.execute("xh_def_test = 40 + 2");

@@ -178,15 +178,12 @@ runReplAction act h srcPtr srcLen errPtr = do
 --------------------------------------------------------------------------------
 
 moduleHeader :: String
-moduleHeader = intercalate "\n"
+moduleHeader = unlines
   [ "module Inline where"
   , "import Prelude"
   , "import System.IO.PrintOrRun"
   , "import Data.Typeable"
-  , "default Num (Integer, Double)"
-  , "default IsString (String)"
-  , "default Show (())"
-  ] ++ "\n"
+  ]
 
 runResultName :: String
 runResultName = "runResult"
@@ -197,10 +194,15 @@ runResultIdent = mkIdent runResultName
 buildModule :: String -> String
 buildModule defs = moduleHeader ++ defs
 
+indent :: String -> String
+indent = unlines . map ("  " ++) . lines
+
 runBlock :: String -> String
 runBlock stmt = unlines
   [ runResultName ++ " :: IO ()"
-  , runResultName ++ " = _printOrRun (" ++ stmt ++ ")"
+  , runResultName ++ " = _printOrRun ("
+  , indent stmt
+  , "  )"
   ]
 
 ensureTrailingNewline :: String -> String
