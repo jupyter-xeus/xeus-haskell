@@ -209,26 +209,13 @@ repl_result MicroHsRepl::execute(std::string_view code) {
 }
 
 std::vector<std::string> MicroHsRepl::completion_candidates() {
-    char* raw = nullptr;
-    intptr_t rc = mhs_repl_completion_candidates_cstr(
-        context,
-        reinterpret_cast<void*>(&raw)
-    );
     std::string output;
-    if (rc == 0 && raw != nullptr) {
-        output.assign(raw);
-        mhs_repl_free_cstr(raw);
-    } else {
-        if (raw) {
-            mhs_repl_free_cstr(raw);
-        }
-        try {
-            output = capture_stdout([&]() {
-                mhs_repl_completion_candidates(context);
-            });
-        } catch (const std::runtime_error&) {
-            return {};
-        }
+    try {
+        output = capture_stdout([&]() {
+            mhs_repl_completion_candidates(context);
+        });
+    } catch (const std::runtime_error&) {
+        return {};
     }
 
     std::vector<std::string> candidates;

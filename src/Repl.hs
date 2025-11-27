@@ -8,8 +8,7 @@ module Repl (
   mhsReplFreeCString,
   mhsReplCanParseDefinition,
   mhsReplCanParseExpression,
-  mhsReplCompletionCandidates,
-  mhsReplCompletionCandidatesCString
+  mhsReplCompletionCandidates
 ) where
 
 import qualified Prelude ()
@@ -134,7 +133,6 @@ foreign export ccall "mhs_repl_free_cstr"   mhsReplFreeCString  :: CString -> IO
 foreign export ccall "mhs_repl_can_parse_definition" mhsReplCanParseDefinition :: CString -> CSize -> IO CInt
 foreign export ccall "mhs_repl_can_parse_expression" mhsReplCanParseExpression :: CString -> CSize -> IO CInt
 foreign export ccall "mhs_repl_completion_candidates" mhsReplCompletionCandidates :: ReplHandle-> IO ()
-foreign export ccall "mhs_repl_completion_candidates_cstr" mhsReplCompletionCandidatesCString :: ReplHandle -> Ptr CString -> IO CInt
 
 mhsReplNew :: CString -> CSize -> IO ReplHandle
 mhsReplNew cstr csize = do
@@ -359,7 +357,6 @@ extractIdents ts = [s | TIdent _ _ s <- ts]
 completionCandidates :: String -> [String]
 completionCandidates = extractIdents . tokenize
 
--- List of standard Haskell keywords and reserved operators
 reservedIds :: [String]
 reservedIds =
   [ "case", "class", "data", "default", "deriving", "do", "else"
@@ -368,33 +365,11 @@ reservedIds =
   , "where", "_"
   ]
 
--- The FFI export implementation
 mhsReplCompletionCandidates :: ReplHandle -> IO ()
 mhsReplCompletionCandidates h = do
-  -- 1. Dereference the stable pointer to get the IORef
   ref <- deRefStablePtr h
-  -- 2. Read the current context
   ctx <- readIORef ref
-  -- 3. Extract the source code from the stored definitions
   let source = currentDefsSource ctx
-  -- Extract identifiers using the existing helper (Tokenize -> Extract)
   let localIdents = completionCandidates source
-  -- Combine reserved words with local identifiers and deduplicate
   let allCandidates = nub (reservedIds ++ localIdents)
-  -- Print each candidate on a new line (use mapM_ for IO actions, not map)
   mapM_ putStrLn allCandidates
-
-mhsReplCompletionCandidatesCString :: ReplHandle -> Ptr CString -> IO CInt
-mhsReplCompletionCandidatesCString h outPtr = do
-  ref <- deRefStablePtr h
-  ctx <- readIORef ref
-  let source = currentDefsSource ctx
-      localIdents = completionCandidates source
-      allCandidates = nub (reservedIds ++ localIdents)
-      body = intercalate "\n" allCandidates
-  if outPtr == nullPtr
-    then pure c_ERR
-    else do
-      cbody <- newCString body
-      poke outPtr cbody
-      pure c_OK
