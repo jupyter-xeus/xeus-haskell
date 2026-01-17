@@ -44,6 +44,33 @@ class KernelTests(jupyter_kernel_test.KernelTests):
         self.assertEqual(msg["msg_type"], "execute_result")
         self.assertEqual(msg["content"]["data"]["text/plain"], "hello, world")
 
+    code_display_data = [
+        {"code": 'putStr "\\x02text/html\\x1F<b>Bold</b>\\x03"', "mime": "text/html"}
+    ]
+
+    def test_display_data(self) -> None:
+        if not self.code_display_data:
+            raise SkipTest("No code display data")
+
+        for sample in self.code_display_data:
+            with self.subTest(code=sample["code"]):
+                self.flush_channels()
+                reply, output_msgs = self.execute_helper(sample["code"])
+
+                self.assertEqual(reply["content"]["status"], "ok")
+
+                self.assertGreaterEqual(len(output_msgs), 1)
+                found = False
+                for msg in output_msgs:
+                    # xeus-haskell uses execute_result for all output, including rich display
+                    if msg["msg_type"] in ("display_data", "execute_result"):
+                        if sample["mime"] in msg["content"]["data"]:
+                            found = True
+                
+                if not found:
+                    emsg = "display_data or execute_result message with correct mime not found"
+                    raise AssertionError(emsg)
+
     def test_stderr(self):
         # Stderr handling might be different or not separated in current simple implementation
         # Skip or adapt if we know how error behaves.
