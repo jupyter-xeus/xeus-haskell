@@ -47,10 +47,10 @@ class XHaskellKernelTests(jupyter_kernel_test.KernelTests):
     code_stderr = ""
     code_page_something = ""
     code_generate_error = "1 `div` 0"
-    code_execute_result = [{"code": "2 + 2", "result": "4\n"}]
+    code_execute_result = [{"code": "10", "result": "10\n"}]
     code_display_data = []
-    code_history_pattern = ""
-    supported_history_operations = ()
+    code_history_pattern = "10"
+    supported_history_operations = ("range", "tail", "search")
     code_inspect_sample = "putStrLn"
     code_clear_output = ""
 

@@ -19,6 +19,7 @@
 #include "xeus/xinput.hpp"
 #include "xeus/xinterpreter.hpp"
 
+#include "xeus-haskell/xhistory_manager.hpp"
 #include "xeus-haskell/xinterpreter.hpp"
 
 namespace nl = nlohmann;

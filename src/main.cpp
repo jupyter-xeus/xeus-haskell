@@ -31,6 +31,7 @@
 
 
 #include "xeus-haskell/xinterpreter.hpp"
+#include "xeus-haskell/xhistory_manager.hpp"
 #include "xeus-haskell/xeus_haskell_config.hpp"
 
 
@@ -112,6 +113,11 @@ int main(int argc, char* argv[])
     using interpreter_ptr = std::unique_ptr<xeus_haskell::interpreter>;
     interpreter_ptr interpreter = interpreter_ptr(new xeus_haskell::interpreter());
 
+    using history_manager_ptr = std::unique_ptr<xeus_haskell::history_manager>;
+    history_manager_ptr history = history_manager_ptr(new xeus_haskell::history_manager());
+
+    interpreter->set_history_manager(history.get());
+
 
     std::string connection_filename = extract_filename(argc, argv);
 
@@ -123,7 +129,8 @@ int main(int argc, char* argv[])
                              xeus::get_user_name(),
                              std::move(context),
                              std::move(interpreter),
-                             xeus::make_xserver_shell_main);
+                             xeus::make_xserver_shell_main,
+                             std::move(history));
 
         std::cout <<
             "Starting xhaskell kernel...\n\n"
@@ -138,7 +145,8 @@ int main(int argc, char* argv[])
         xeus::xkernel kernel(xeus::get_user_name(),
                              std::move(context),
                              std::move(interpreter),
-                             xeus::make_xserver_shell_main);
+                             xeus::make_xserver_shell_main,
+                             std::move(history));
 
         const auto& config = kernel.get_config();
         std::cout <<

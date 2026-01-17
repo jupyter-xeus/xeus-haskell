@@ -111,10 +111,12 @@ endif()
 set(XEUS_HASKELL_HEADERS
     include/xeus-haskell/xeus_haskell_config.hpp
     include/xeus-haskell/xinterpreter.hpp
+    include/xeus-haskell/xhistory_manager.hpp
 )
 
 set(XEUS_HASKELL_SRC
     src/xinterpreter.cpp
+    src/xhistory_manager.cpp
 )
 
 set(XEUS_HASKELL_MAIN_SRC
