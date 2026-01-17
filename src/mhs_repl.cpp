@@ -1,3 +1,4 @@
+#include <algorithm>
 #include <cstdio>
 #include <cstdlib>
 #include <functional>
@@ -249,6 +250,12 @@ repl_result MicroHsRepl::execute(std::string_view code) {
     // Return default mime_type (text/plain) on error
     return {false, std::string(), std::string(e.what()), "text/plain"};
   }
+
+  // Normalize line endings: remove \r (CR)
+  // This ensures consistent output across platforms (Windows uses \r\n, others
+  // \n)
+  raw_output.erase(std::remove(raw_output.begin(), raw_output.end(), '\r'),
+                   raw_output.end());
 
   // Parse the captured output to separate MIME type and content
   ParsedOutput parsed = parse_protocol_output(raw_output);
