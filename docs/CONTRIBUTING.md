@@ -25,10 +25,10 @@ cd xeus-haskell
 1. Initialize the development environment:
 
 ```bash
-pixi run -e dev prebuild
+pixi run -e default prebuild
 ```
 
-The `dev` environment includes all necessary tools (CMake, C++ compilers, Python for testing, etc.).
+The `default` environment includes all necessary tools (CMake, C++ compilers, Python for testing, etc.).
 
 ## Development Workflow
 
@@ -37,8 +37,8 @@ The `dev` environment includes all necessary tools (CMake, C++ compilers, Python
 To build and install the kernel in your local environment:
 
 ```bash
-pixi run -e dev build
-pixi run -e dev install
+pixi run -e default build
+pixi run -e default install
 ```
 
 ### Running Tests
@@ -47,10 +47,10 @@ We use `pytest` and `ctest` for verifying the kernel:
 
 ```bash
 # Run C++ tests
-pixi run -e dev ctest
+pixi run -e default ctest
 
 # Run Python-based Jupyter kernel tests
-pixi run -e dev pytest
+pixi run -e default pytest
 ```
 
 ### Working with WebAssembly (JupyterLite)
@@ -59,6 +59,7 @@ If you are contributing to the WebAssembly build, you need the `wasm-build` and 
 
 ```bash
 # Prepare the WASM host environment
+pixi install -e wasm-build
 pixi install -e wasm-host
 
 # Build for WebAssembly
