@@ -130,7 +130,6 @@ channels = ["https://repo.prefix.dev/emscripten-forge-dev", "conda-forge"]
 nlohmann_json = "*"
 xeus-lite = ">=3.0,<4.0"
 xeus = ">=5.0.0,<6.0"
-xtl = ">=0.7,<0.8"
 
 [feature.wasm-host.tasks]
 
