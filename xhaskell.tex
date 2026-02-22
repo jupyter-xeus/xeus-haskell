@@ -4,6 +4,9 @@
 \usepackage{geometry}
 \usepackage{hyperref}
 \usepackage{xcolor}
+\usepackage{amsfonts}
+\usepackage{pifont}
+\usepackage{enumitem}
 \usepackage{minted}
 \geometry{margin=1in}
 
@@ -21,6 +24,9 @@
 \usemintedstyle{friendly}
 
 \newminted[code]{haskell}{}
+\newcommand{\tododone}{\textcolor{green!45!black}{\ding{51}}}
+\newcommand{\todopending}{\textcolor{red!65!black}{\ding{55}}}
+\newcommand{\todoplanned}{\textcolor{blue!70!black}{$\mathbb{P}$}}
 
 \title{Xeus-Haskell: Docs and Literate Sources}
 \author{}
@@ -373,47 +379,49 @@ Join our public video meetings! The schedule and minutes are available on our \h
 
 
 This document tracks planned improvements and currently missing features for \texttt{xeus-haskell}.
+
+Status symbols: \tododone\ completed, \todopending\ pending, \todoplanned\ planned.
 \subsection{Core Kernel Features}
 
 
-\begin{itemize}
-\item [x] \textbf{\texttt{is\_complete} implementation}: Map parsability of mixed cells to Jupyter's completeness status.
-\item [ ] \textbf{Incomplete Status}: Refine \texttt{is\_complete} to distinguish between \texttt{invalid} and \texttt{incomplete} code (e.g., unclosed delimiters).
-\item [x] \textbf{\texttt{inspect\_request}}: Support for "Introspection" (Shift+Tab in Jupyter) to show documentation or type signatures for identifiers.
-\item [ ] \textbf{\texttt{history\_request}}: Implementation of the Jupyter history protocol to allow searching and retrieving previous cell inputs.
-\item [ ] \textbf{Advanced Completion}: Improve \texttt{completion\_request} to support qualified names (e.g., \texttt{Prelude.putStrLn}) and type-aware suggestions.
-\item [ ] \textbf{Kernel Interrupt}: Add support for interrupting long-running Haskell executions (SIGINT handling).
+\begin{itemize}[leftmargin=*,itemsep=0.45em]
+\item[\tododone] \textbf{\texttt{is\_complete} implementation}: Map parsability of mixed cells to Jupyter's completeness status.
+\item[\todopending] \textbf{Incomplete Status}: Refine \texttt{is\_complete} to distinguish between \texttt{invalid} and \texttt{incomplete} code (e.g., unclosed delimiters).
+\item[\tododone] \textbf{\texttt{inspect\_request}}: Support for "Introspection" (Shift+Tab in Jupyter) to show documentation or type signatures for identifiers.
+\item[\todopending] \textbf{\texttt{history\_request}}: Implementation of the Jupyter history protocol to allow searching and retrieving previous cell inputs.
+\item[\todopending] \textbf{Advanced Completion}: Improve \texttt{completion\_request} to support qualified names (e.g., \texttt{Prelude.putStrLn}) and type-aware suggestions.
+\item[\todopending] \textbf{Kernel Interrupt}: Add support for interrupting long-running Haskell executions (SIGINT handling).
 \end{itemize}
 
 
 \subsection{REPL Improvements}
 
 
-\begin{itemize}
-\item [ ] \textbf{Selective Re-compilation}: Instead of concatenating all previous definitions for every new definition, implement a dependency-tracking system to only re-compile what is necessary.
-\item [ ] \textbf{Better Error Reporting}: Map MicroHs compile errors back to the specific line numbers in the Jupyter cell.
-\item [ ] \textbf{WASM Optimization}: Reduce the size of the WebAssembly bundle and optimize the initial "warmup" time in the browser.
-\item [x] \textbf{Language Extensions}: Work with the MicroHs upstream to support more modern Haskell extensions (e.g., \texttt{GADTs}, \texttt{TypeFamilies}).
+\begin{itemize}[leftmargin=*,itemsep=0.45em]
+\item[\todopending] \textbf{Selective Re-compilation}: Instead of concatenating all previous definitions for every new definition, implement a dependency-tracking system to only re-compile what is necessary.
+\item[\todopending] \textbf{Better Error Reporting}: Map MicroHs compile errors back to the specific line numbers in the Jupyter cell.
+\item[\todopending] \textbf{WASM Optimization}: Reduce the size of the WebAssembly bundle and optimize the initial "warmup" time in the browser.
+\item[\tododone] \textbf{Language Extensions}: Work with the MicroHs upstream to support more modern Haskell extensions (e.g., \texttt{GADTs}, \texttt{TypeFamilies}).
 \end{itemize}
 
 
 \subsection{Rich Output Display System}
 
 
-\begin{itemize}
-\item [ ] \textbf{Standard Library Instances}: Add \texttt{Display} instances for more types in the MicroHs standard library.
-\item [ ] \textbf{Data Visualization}: Create bridges for common Haskell charting libraries to output Jupyter-compatible JSON/Vega-Lite data.
-\item [ ] \textbf{Widgets}: Initial investigation into supporting Jupyter Widgets (ipywidgets protocol).
+\begin{itemize}[leftmargin=*,itemsep=0.45em]
+\item[\todoplanned] \textbf{Standard Library Instances}: Add \texttt{Display} instances for more types in the MicroHs standard library.
+\item[\todoplanned] \textbf{Data Visualization}: Create bridges for common Haskell charting libraries to output Jupyter-compatible JSON/Vega-Lite data.
+\item[\todoplanned] \textbf{Widgets}: Initial investigation into supporting Jupyter Widgets (ipywidgets protocol).
 \end{itemize}
 
 
 \subsection{Infrastructure \& Testing}
 
 
-\begin{itemize}
-\item [ ] \textbf{Enhanced CI}: Add automated UI tests using \texttt{playwright} or \texttt{selenium} to verify the kernel works in a real JupyterLab/JupyterLite instance.
-\item [ ] \textbf{Benchmarking}: Create a suite of performance benchmarks to track compilation and execution speed regressions.
-\item [ ] \textbf{Conda-forge/Emscripten-forge}: Package the kernel for easier installation without needing to build from source.
+\begin{itemize}[leftmargin=*,itemsep=0.45em]
+\item[\todoplanned] \textbf{Enhanced CI}: Add automated UI tests using \texttt{playwright} or \texttt{selenium} to verify the kernel works in a real JupyterLab/JupyterLite instance.
+\item[\todoplanned] \textbf{Benchmarking}: Create a suite of performance benchmarks to track compilation and execution speed regressions.
+\item[\todoplanned] \textbf{Conda-forge/Emscripten-forge}: Package the kernel for easier installation without needing to build from source.
 \end{itemize}
 
 \clearpage
