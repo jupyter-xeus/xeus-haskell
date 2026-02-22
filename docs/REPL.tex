@@ -1,141 +1,441 @@
 \section{MicroHs REPL Mechanism}
 \label{sec:repl}
 
+This chapter documents the REPL as a single argument: a Jupyter kernel can remain interactive and semantically coherent even when its compiler was not designed as a notebook runtime. The architectural choice of MicroHs is deliberate. A small compiler surface constrains the language to a pragmatic Haskell 2010 core, but it also exposes a tractable runtime boundary for foreign-function integration, deployment to constrained environments, and careful control of evaluation latency.
 
-This document provides a technical overview of how the REPL (Read-Eval-Print Loop) is implemented in \texttt{xeus-haskell}.
-\subsection{Overview}
+From a scientific perspective, the system is a state machine with explicit transitions and measurable costs. From a humanistic perspective, it is a continuity device: each cell is a new utterance in an ongoing discourse, and the runtime must preserve memory, revision, and context without losing formal precision.
 
+\subsection{Layered Architecture: Notebook Request to Runtime Effect}
 
-Unlike kernels based on GHC, \texttt{xeus-haskell} leverages \textbf{MicroHs}, a minimal Haskell implementation. The REPL provides an incremental execution environment where state (definitions and types) is preserved across multiple Jupyter cells.
-\subsection{Core Components}
+Execution is a composition of layers
+$L_0 \to L_1 \to L_2 \to L_3 \to L_4$:
 
-
-\subsubsection{1. Haskell REPL Engine Layer}
-
-
-The core logic is written in Haskell and compiled with MicroHs into C code, then linked into the final executable. It is responsible for:
 \begin{itemize}
-\item \textbf{Context Management}: Maintaining the \texttt{ReplCtx} which stores user-defined code snippets, the compiler's incremental \texttt{Cache}, and persistent \texttt{Symbols} for type checking.
-\item \textbf{Parsing and Analysis}: Using \texttt{MicroHs.Parse} and \texttt{MicroHs.Lex} to validate definitions and expressions.
-\item \textbf{Incremental Compilation}: Generating a transient \texttt{Inline} module that imports the current environment and compiling it to combinators for execution.
-\item \textbf{Shadowing Logic}: Detecting Redefined identifiers and stripping older versions from the internal state to simulate a natural REPL experience.
+\item $L_0$: Jupyter message protocol (execute, complete, inspect, is\_complete).
+\item $L_1$: Xeus interpreter callbacks in C++.
+\item $L_2$: C++ bridge that captures output and marshals FFI buffers.
+\item $L_3$: Haskell FFI entrypoints managing persistent \verb|ReplCtx|.
+\item $L_4$: MicroHs parse/typecheck/translate/evaluate pipeline.
 \end{itemize}
 
+The Xeus callback layer delegates kernel behavior to the bridge object:
 
-\subsubsection{2. Native C++ Runtime Bridge}
+\begin{minted}{cpp}
+void interpreter::execute_request_impl(send_reply_callback cb,
+                                       int execution_counter,
+                                       const std::string &code,
+                                       xeus::execute_request_config config,
+                                       nl::json /*user_expressions*/) {
+  auto exec_result = [&]() -> repl_result {
+    try {
+      return m_repl.execute(code);
+    } catch (const std::exception &e) {
+      return {false, std::string(), std::string(e.what())};
+    } catch (...) {
+      return {false, std::string(), std::string("Unknown MicroHs error")};
+    }
+  }();
 
+  if (!exec_result.ok) {
+    const std::string &error_msg = exec_result.error;
+    const std::vector<std::string> traceback{error_msg};
+    publish_execution_error("RuntimeError", error_msg, traceback);
 
-A mediator between the Xeus kernel and the MicroHs backend. It provides:
-\begin{itemize}
-\item \textbf{FFI Wrapper}: A class-based API (\texttt{MicroHsRepl}) that manages the \texttt{StablePtr} life cycle and translates between C++ strings and FFI-safe types.
-\item \textbf{Stdout Capture}: A robust platform-specific implementation (using \texttt{pipe} and \texttt{dup2} on POSIX, or named pipes on Windows) to intercept output from MicroHs's internal runtime.
-\item \textbf{Resource Management}: Initializing the MicroHs runtime environment and locating the standard library (\texttt{MHSDIR}).
-\end{itemize}
+    nl::json traceback_json = nl::json::array();
+    traceback_json.push_back(error_msg);
 
-
-\subsubsection{3. Jupyter Interpreter Integration}
-
-
-The entry point for all Jupyter protocol interactions, inheriting from \texttt{xeus::xinterpreter}. It handles:
-\begin{itemize}
-\item \textbf{Request Routing}: Mapping incoming messages like \texttt{execute\_request}, \texttt{complete\_request}, or \texttt{inspect\_request} to the appropriate \texttt{MicroHsRepl} methods.
-\item \textbf{MIME Formatting}: Packaging captured results into Jupyter-compatible JSON payloads (e.g., wrapping plain text in \texttt{text/plain}).
-\item \textbf{Kernel Metadata}: Providing details about the implementation, such as the Haskell version and pygments lexer settings.
-\item \textbf{Lifecycle Control}: Handling kernel shutdown and initialization (warmup).
-\end{itemize}
-
-
----
-\subsubsection{High-Level Sequence}
-
-
-\begin{enumerate}
-\item Jupyter sends \texttt{execute\_request(code)} to the Xeus interpreter.
-\item The interpreter forwards code to the C++ REPL bridge.
-\item The bridge redirects stdout, then calls \texttt{replExecute(code)} in the MicroHs backend.
-\item The backend performs scan/split, compiles definitions or run blocks, and executes.
-\item The backend returns status to the bridge.
-\item The bridge restores stdout, reads captured output, and returns output + status to the interpreter.
-\item The interpreter emits \texttt{execute\_reply} and stdout stream messages to Jupyter.
-\end{enumerate}
-
-
-\subsubsection{1. Mixed cell support (Scan and Split)}
-
-
-Unlike standard REPLs that might expect a single statement per line, \texttt{xeus-haskell} supports cells containing a mix of definitions and expressions. It applies a \textbf{Scan and Split} algorithm to determine the execution boundary. This same algorithm is used both for \textbf{execution} and for \textbf{completeness checking} (\texttt{is\_complete}).
-
-
-\begin{enumerate}
-\item \textbf{Greedy Prefix Search}: The kernel scans the cell line-by-line from the bottom up to find the largest prefix that forms a valid set of Haskell definitions.
-\item \textbf{Definition Processing}: Any lines identified as definitions are appended to the persistent context and compiled.
-\item \textbf{Expression Execution}: The remaining lines (the "execution block") are processed as follows:
-    - \textbf{Raw Expression}: First, the kernel tries to parse the block as a single pure expression (e.g., \texttt{1 + 1}).    - \textbf{Monadic \texttt{do}-wrapping}: If it's not a single expression, the kernel wraps the block in a \texttt{do} block (e.g., for multiple \texttt{putStrLn} calls) to allow sequential IO execution.\end{enumerate}
-
-
-\subsubsection{2. State Maintenance (The persistent Context)}
-
-
-State is maintained through a persistent \texttt{ReplCtx} structure in \texttt{Repl.lhs}:
-\begin{minted}{haskell}
-data ReplCtx = ReplCtx
-  { rcFlags :: Flags       -- Compilation flags
-  , rcCache :: Cache       -- MicroHs compiler cache
-  , rcDefs  :: [StoredDef]  -- List of user-defined snippets
-  , rcSyms  :: Symbols     -- Persistent symbol tables for introspection
+    cb(xeus::create_error_reply(error_msg, "RuntimeError", traceback_json));
+    return;
   }
+
+  if (!config.silent) {
+    const std::string &output = exec_result.output;
+    if (!output.empty()) {
+      nl::json pub_data;
+      pub_data[exec_result.mime_type] = output;
+      publish_execution_result(execution_counter, std::move(pub_data),
+                               nl::json::object());
+    }
+  }
+
+  cb(xeus::create_successful_reply(nl::json::array(), nl::json::object()));
+}
+
+nl::json interpreter::is_complete_request_impl(const std::string &code) {
+  std::string status = m_repl.is_complete(code);
+  return xeus::create_is_complete_reply(status /*status*/, "   " /*indent*/);
+}
 \end{minted}
 
+The bridge constructor initializes MicroHs once, discovers runtime paths, and triggers a warmup evaluation:
 
-When a definition is entered:
-\begin{enumerate}
-\item \textbf{Name Extraction}: The kernel identifies which names (identifiers) are being defined.
-\item \textbf{Shadowing}: If a previous definition exists with the same name, it is stripped from \texttt{rcDefs} to simulate shadowing.
-\item \textbf{Incremental Module}: All stored definitions are concatenated into a temporary source file (the "Inline" module).
-\item \textbf{Cache Update}: The module is re-compiled, and the internal compiler cache is updated.
-\end{enumerate}
+\begin{minted}{cpp}
+MicroHsRepl::MicroHsRepl() {
+  if (!mhs_repl_initialized) {
+    mhs_init();
+    mhs_repl_initialized = true;
+  }
 
+  std::string microhs_runtime_dir;
+  const auto* mhsdir = std::getenv("MHSDIR");
+  const auto* conda_prefix = std::getenv("CONDA_PREFIX");
 
-When an execution block is entered:
-\begin{enumerate}
-\item \textbf{Wrapping}: If the block was identified as requiring monadic execution, it is wrapped in an artificial \texttt{do} block and then placed into a temporary \texttt{runResult} function inside the "Inline" module.
-\item \textbf{Execution wrapper}: It uses \texttt{\_printOrRun} to correctly handle both pure values (printing them) and \texttt{IO} actions (executing them).
-\item \textbf{Evaluation}: The temporary module is compiled and executed. Because the previous definitions in the same cell were already committed to the cache in the "Handling Definitions" phase, the expression has access to them immediately.
-\end{enumerate}
+  if (mhsdir != nullptr) {
+    microhs_runtime_dir = mhsdir;
+  } else if (conda_prefix != nullptr) {
+    microhs_runtime_dir = std::string(conda_prefix) + "/share/microhs";
+  }
 
+  context = mhs_repl_new(const_cast<char*>(microhs_runtime_dir.c_str()),
+                         static_cast<uintptr_t>(microhs_runtime_dir.size()));
 
-\subsubsection{3. Completeness Checking}
+  auto warmup = execute("0");
+  (void)warmup;
+}
 
+repl_result MicroHsRepl::execute(std::string_view code) {
+  std::string raw_output;
 
-The kernel implements the \texttt{is\_complete} request to provide a smooth interactive experience in the Jupyter frontend.
-\begin{enumerate}
-\item \textbf{Algorithm Re-use}: The \texttt{is\_complete} logic uses the same \textbf{Scan and Split} algorithm as execution.
-\item \textbf{Status Mapping}:
-    - \textbf{\texttt{complete}}: If the split algorithm finds a boundary where the prefix is a valid set of definitions and the remainder is a valid expression (optionally wrapped in \texttt{do}).    - \textbf{\texttt{invalid}}: If the algorithm fails to find any valid boundary after scanning all possible split points.    - \textbf{\texttt{incomplete}}: (Future work) If the code ends with unclosed delimiters (e.g., \texttt{let x = 1 in}) or unbalanced braces. Currently, it primarily distinguishes between parseable and unparseable code.\end{enumerate}
+  try {
+    raw_output = capture_stdout([&]() {
+      std::string code_str(code);
+      char* err = nullptr;
+      intptr_t rc =
+          mhs_repl_execute(context, const_cast<char*>(code_str.c_str()),
+                           static_cast<uintptr_t>(code_str.size()),
+                           reinterpret_cast<void*>(&err));
 
+      if (rc != 0 && err) {
+        std::string err_str(err);
+        mhs_repl_free_cstr(err);
+        throw std::runtime_error(err_str);
+      }
+      if (err) {
+        mhs_repl_free_cstr(err);
+      }
+    });
+  } catch (const std::runtime_error& e) {
+    return {false, std::string(), std::string(e.what()), "text/plain"};
+  }
 
----
-\subsection{Technical Details}
+  raw_output.erase(std::remove(raw_output.begin(), raw_output.end(), '\r'),
+                   raw_output.end());
 
+  ParsedOutput parsed = parse_protocol_output(raw_output);
 
-\subsubsection{Standard Output Redirection}
+  return {true, std::move(parsed.content), std::string(),
+          std::move(parsed.mime_type)};
+}
+\end{minted}
 
+On the Haskell boundary, the FFI adapter centralizes exception normalization, status-code mapping, and state updates:
 
-Since MicroHs writes directly to \texttt{stdout}, \texttt{xeus-haskell} implements a robust capture mechanism in C++. It creates a POSIX pipe (or Windows pipe) and duplicates the stdout file descriptor during the execution of a cell. This allows the kernel to intercept everything produced by \texttt{putStrLn}, \texttt{print}, or the \texttt{Display} system.
-\subsubsection{Optimization: The Warmup Expression}
+\begin{minted}{haskell}
+runStatefulAction
+  :: (ReplCtx -> String -> IO (Either ReplError ReplCtx))
+  -> ReplHandle
+  -> CString
+  -> CSize
+  -> Ptr CString
+  -> IO CInt
+runStatefulAction act h srcPtr srcLen errPtr =
+  withHandleInput h srcPtr srcLen $ \ref src -> do
+    ctx <- readIORef ref
+    result <- try (act ctx src) :: IO (Either SomeException (Either ReplError ReplCtx))
+    case normalizeResult result of
+      Left err -> writeErrorCString errPtr (prettyReplError err) >> pure c_ERR
+      Right ctx' -> writeIORef ref ctx' >> pure c_OK
 
+mhsReplExecute :: ReplHandle -> CString -> CSize -> Ptr CString -> IO CInt
+mhsReplExecute = runStatefulAction replExecute
 
-During initialization, the \texttt{MicroHsRepl} constructor evaluates a trivial code snippet (\texttt{"0"}). This triggers the initial compilation of the \texttt{Prelude} and other standard libraries, caching them in the \texttt{Cache} to ensure subsequent cell executions are fast.
-\subsubsection{Limitations}
+mhsReplIsComplete :: ReplHandle -> CString -> CSize -> IO CString
+mhsReplIsComplete h srcPtr srcLen =
+  withHandleInput h srcPtr srcLen $ \ref src -> do
+    ctx <- readIORef ref
+    status <- replIsComplete ctx src
+    newCString status
+\end{minted}
 
+\subsection{Persistent Context as a Formal Object}
 
-\begin{itemize}
-\item \textbf{Selective Redefinition}: Because the kernel concatenates all previous definitions for every cell that adds a new definition, very large notebooks with hundreds of complex definitions may see a slight compilation slowdown.
-\item \textbf{MicroHs Boundaries}: Language features are limited to those supported by the MicroHs compiler (Haskell 2010 + some extensions). GHC-specific extensions (like \texttt{TypeApplications} or \texttt{GADTs}) are generally not available.
-\end{itemize}
+The session state is represented by:
+$$
+ReplCtx = (F, C, D, \Sigma)
+$$
+where $F$ is compiler flags/search paths, $C$ is MicroHs incremental cache, $D$ is ordered stored definitions, and $\Sigma$ is the pair of type/value symbol tables.
 
+This is reflected directly in the source:
 
-\subsection{Advanced Usage: Display System}
+\begin{minted}{haskell}
+type ReplHandle = StablePtr (IORef ReplCtx)
 
+data StoredDef = StoredDef
+  { sdCode :: String
+  , sdNames :: [Ident]
+  }
 
-The REPL is integrated with the rich content protocol described in \hyperref[sec:communication]{Communication and System Architecture}. If an expression evaluates to a type that implements the \texttt{Display} typeclass, its output is automatically wrapped in the rich content markers and rendered as HTML, LaTeX, or Markdown in the notebook.
+data ReplCtx = ReplCtx
+  { rcFlags :: Flags
+  , rcCache :: Cache
+  , rcDefs  :: [StoredDef]
+  , rcSyms  :: Symbols
+  }
+
+initialCtx :: String -> IO ReplCtx
+initialCtx dir = do
+  let flags = defaultFlags dir
+  mpath <- lookupEnv "MHS_LIBRARY_PATH"
+  let rpath = maybe "." id mpath
+      extra = splitColon rpath
+      rcFlags = flags { paths = paths flags ++ extra }
+  pure ReplCtx { rcFlags = rcFlags, rcCache = emptyCache, rcDefs = [], rcSyms = (stEmpty, stEmpty) }
+\end{minted}
+
+Definition persistence uses replacement-by-name to model REPL shadowing:
+
+\begin{minted}{haskell}
+appendDefinition :: ReplCtx -> String -> Either ReplError [StoredDef]
+appendDefinition ctx snippet =
+    case extractDefinitionNames snippet of
+        Left err -> Left err
+        Right names ->
+            let uniqueNames = nub names
+                retainedDefs = stripRedefined (rcDefs ctx) uniqueNames
+            in Right (retainedDefs ++ [StoredDef snippet uniqueNames])
+\end{minted}
+
+Formally, with $\mathrm{Names}(d)$ as bound identifiers in definition snippet $d$,
+$$
+D' = \mathrm{strip}(D, \mathrm{Names}(d)) \mathbin{\|} [d].
+$$
+The invariant is chronological except where name-collision replacement occurs; the most recent binding for each identifier is retained.
+
+\subsection{Scan-and-Split as a Parsing Strategy}
+
+Notebook cells may mix declarations and runnable expressions. For lines
+$\ell = \langle \ell_1, \dots, \ell_n \rangle$, the kernel searches split index $i \in \{n, n-1, \dots, 0\}$ and partitions:
+$$
+\ell^{def}_i = \langle \ell_1, \dots, \ell_i \rangle,
+\qquad
+\ell^{run}_i = \langle \ell_{i+1}, \dots, \ell_n \rangle.
+$$
+A valid plan is the first $i$ such that accumulated definitions parse and the tail is either empty, expression-valid, or expression-valid after \verb|do|-wrapping.
+
+\begin{minted}{haskell}
+data SplitPlan
+  = SplitDefineOnly String
+  | SplitDefineThenRun String String
+
+firstValidSplitPlan :: String -> String -> Maybe SplitPlan
+firstValidSplitPlan currentDefs snippet =
+  let snippetLines = lines (ensureTrailingNewline snippet)
+  in listToMaybe (mapMaybe (classifySplit currentDefs snippetLines) [length snippetLines, length snippetLines - 1 .. 0])
+
+classifySplit :: String -> [String] -> Int -> Maybe SplitPlan
+classifySplit currentDefs snippetLines splitIndex
+  | not (canParseDefinition candidateDefs) = Nothing
+  | all allwsLine runLines = Just (SplitDefineOnly defPart)
+  | canParseExpression runPart = Just (SplitDefineThenRun defPart runPart)
+  | canParseExpression doRunPart = Just (SplitDefineThenRun defPart doRunPart)
+  | otherwise = Nothing
+  where
+    (defLines, runLines) = splitAt splitIndex snippetLines
+    defPart = unlines defLines
+    runPart = unlines (dropWhileEndLocal allwsLine runLines)
+    doRunPart = "do\n" ++ indent runPart
+    candidateDefs = currentDefs ++ defPart
+\end{minted}
+
+The completeness classifier reuses this split logic and adds structural heuristics:
+
+\begin{minted}{haskell}
+isIncomplete :: String -> Bool
+isIncomplete s = go [] s
+  where
+    go st [] = not (null st)
+    go st (c:cs)
+      | c `elem` "([{" = go (c:st) cs
+      | c `elem` ")]}" = case st of
+          [] -> False
+          (x:xs) -> if match x c then go xs cs else False
+      | c == '"' = goString st cs
+      | c == '\'' = goChar st cs
+      | otherwise = go st cs
+    goString st [] = True
+    goString st ('\\':'"':cs) = goString st cs
+    goString st ('"':cs) = go st cs
+    goString st (_:cs) = goString st cs
+    goChar st [] = True
+    goChar st ('\\':'\'':cs) = goChar st cs
+    goChar st ('\'':cs) = go st cs
+    goChar st (_:cs) = goChar st cs
+    match '(' ')' = True
+    match '[' ']' = True
+    match '{' '}' = True
+    match _ _ = False
+\end{minted}
+
+The returned frontend status can be expressed as:
+$$
+\exists i\,\mathrm{validSplit}(x,i) \Rightarrow \mathcal{C}(x)=\mathsf{complete}
+$$
+$$
+\neg\exists i\,\mathrm{validSplit}(x,i) \land \mathrm{openDelims}(x)
+\Rightarrow \mathcal{C}(x)=\mathsf{incomplete}
+$$
+$$
+\neg\exists i\,\mathrm{validSplit}(x,i) \land \neg\mathrm{openDelims}(x)
+\Rightarrow \mathcal{C}(x)=\mathsf{invalid}
+$$
+
+\subsection{Compilation and Evaluation Transitions}
+
+Code generation and execution are isolated into a small compilation module:
+
+\begin{minted}{haskell}
+runBlock :: String -> String
+runBlock stmt = unlines
+  [ runResultName ++ " :: IO ()"
+  , runResultName ++ " = _printOrRun ("
+  , indent stmt
+  , "  )"
+  ]
+
+compileModule :: ReplCtx -> String -> IO (Either ReplError (TModule [LDef], Cache, Symbols))
+compileModule ctx src =
+  case parse pTopModule "<repl>" src of
+    Left perr -> pure (Left (ReplParseError perr))
+    Right mdl -> do
+      r <- runStateIO (compileModuleP (rcFlags ctx) ImpNormal mdl) (rcCache ctx)
+      let (((dmdl, syms, _, _, _), _), cache') = unsafeCoerce r
+          cmdl = compileToCombinators dmdl
+      pure (Right (cmdl, cache', syms))
+
+runAction :: Cache -> TModule [LDef] -> Ident -> IO (Either ReplError ())
+runAction cache cmdl ident = do
+  let defs      = tBindingsOf cmdl
+      baseMap   = withBuiltinAliases $ translateMap $ concatMap tBindingsOf (cachedModules cache)
+      actionAny = translateWithMap baseMap (defs, Var (qualIdent (tModuleName cmdl) ident))
+      action    = unsafeCoerce actionAny :: IO ()
+  action
+  pure (Right ())
+\end{minted}
+
+At the executor level, the transitions are explicit:
+
+\begin{minted}{haskell}
+replDefine :: ReplCtx -> String -> IO (Either ReplError ReplCtx)
+replDefine ctx snippet =
+  case appendDefinition ctx (ensureTrailingNewline snippet) of
+    Left err -> pure (Left err)
+    Right defsWithNew ->
+      compileModule ctx (moduleFromDefs defsWithNew) `andThen`
+        \(_, cache', syms') ->
+          right ctx{ rcDefs = defsWithNew, rcCache = cache', rcSyms = syms' }
+
+replRun :: ReplCtx -> String -> IO (Either ReplError ReplCtx)
+replRun ctx stmt =
+  compileModule ctx (moduleSourceWith ctx (runBlock stmt)) `andThen`
+    \(cmdl, cache', syms') ->
+      runAction cache' cmdl runResultIdent `andThen`
+        \() -> right ctx{ rcCache = cache', rcSyms = syms' }
+
+replExecute :: ReplCtx -> String -> IO (Either ReplError ReplCtx)
+replExecute ctx snippet
+  | Just cmd <- parseMetaCommand snippet = runMetaCommand ctx cmd
+replExecute ctx snippet =
+  case firstValidSplitPlan (currentDefsSource ctx) snippet of
+    Nothing -> pure (Left (ReplParseError "unable to parse snippet"))
+    Just (SplitDefineOnly defPart) -> replDefine ctx defPart
+    Just (SplitDefineThenRun defPart runPart) -> defineThenRun ctx defPart runPart
+
+defineThenRun :: ReplCtx -> String -> String -> IO (Either ReplError ReplCtx)
+defineThenRun ctx defPart runPart = replDefine ctx defPart `andThen` \ctx' -> replRun ctx' runPart
+
+replIsComplete :: ReplCtx -> String -> IO String
+replIsComplete ctx snippet = pure (toText completion)
+  where
+    completion
+      | all isws snippet = Complete
+      | hasValidSplit = Complete
+      | isIncomplete snippet = Incomplete
+      | otherwise = Invalid
+    hasValidSplit = isJust (firstValidSplitPlan (currentDefsSource ctx) snippet)
+    toText state =
+      case state of
+        Complete -> "complete"
+        Incomplete -> "incomplete"
+        Invalid -> "invalid"
+\end{minted}
+
+We can summarize the dynamic semantics as two primary transitions:
+$$
+\delta_{def}(F,C,D,\Sigma; d) = (F, C', D', \Sigma') \quad \mathsf{or} \quad \mathsf{error},
+$$
+$$
+\delta_{run}(F,C,D,\Sigma; e) = (F, C', D, \Sigma') \quad \mathsf{or} \quad \mathsf{error}.
+$$
+The definitional transition mutates $D$; the run transition preserves $D$ but still advances cache and symbols.
+
+\subsection{Error Algebra and Utility Substrate}
+
+The error type is intentionally small and compositional:
+
+\begin{minted}{haskell}
+data ReplError
+  = ReplParseError String
+  | ReplCompileError String
+  | ReplRuntimeError String
+  deriving (Eq, Show)
+
+prettyReplError :: ReplError -> String
+prettyReplError e =
+  case e of
+    ReplParseError s   -> "Parse error: "   ++ s
+    ReplCompileError s -> "Compile error: " ++ s
+    ReplRuntimeError s -> "Runtime error: " ++ s
+\end{minted}
+
+The support module codifies lexical whitespace and synthetic module construction used throughout analysis and execution:
+
+\begin{minted}{haskell}
+ensureTrailingNewline :: String -> String
+ensureTrailingNewline s
+  | null s         = "\n"
+  | last s == '\n' = s
+  | otherwise      = s ++ "\n"
+
+moduleHeader :: String
+moduleHeader = unlines
+  [ "module Inline where"
+  , "import Prelude"
+  , "import System.IO.PrintOrRun"
+  , "import Data.Typeable"
+  , "import Numeric"
+  ]
+
+buildModule :: String -> String
+buildModule defs = moduleHeader ++ defs
+\end{minted}
+
+These helpers are modest in size, but conceptually central: they preserve the textual discipline that allows parser checks, split classification, and compile invocation to agree on what a ``module'' means.
+
+\subsection{Runtime Constraints and Caching Strategy}
+
+MicroHs imposes a productive constraint: the kernel targets a portable subset centered on Haskell 2010 behavior. The tradeoff is intentional. Instead of pursuing maximal language surface, the implementation optimizes for reproducible compilation paths, tractable FFI contracts, and startup predictability in local and WebAssembly contexts.
+
+Latency can be viewed as:
+$$
+T_{first} = T_{init} + T_{runtime\_path} + T_{prelude\_compile} + T_{cell},
+$$
+$$
+T_{next} \approx T_{cache\_reuse} + T_{delta\_compile} + T_{cell}.
+$$
+The warmup evaluation in the bridge lowers the first user-visible cell by moving a portion of $T_{prelude\_compile}$ into initialization. The persistent cache $C$ inside \verb|ReplCtx| then amortizes subsequent compilation by reusing previously compiled modules and symbol context.
+
+The architecture-level implication is that ``state'' is not only user definitions; it is also compilation history. In notebook practice, this turns a sequence of independent source texts into a cumulative dialogue with memory.
+
+\subsection{Relation to Rich Output Protocol}
+
+This chapter has focused on control flow and semantic state. The rendering path for MIME-aware outputs is documented in \hyperref[sec:communication]{Communication and System Architecture}. Operationally, the REPL emits values and effects; the communication protocol decides how those effects are materialized for the frontend.

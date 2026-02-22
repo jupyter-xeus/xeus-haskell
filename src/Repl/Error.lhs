@@ -1,4 +1,8 @@
-This module defines the REPL error model exposed through the FFI layer. It keeps error classification explicit and rendering consistent for callers.
+This module defines the error algebra shared by parser, compiler, runtime, and foreign interface boundaries. The objective is not only to report failure, but to preserve enough stage information so that downstream layers can respond coherently.
+
+We can regard \verb|ReplError| as a tagged union over pipeline phases:
+$E = E_{\mathrm{parse}} + E_{\mathrm{compile}} + E_{\mathrm{runtime}}$.
+This decomposition keeps operational diagnostics interpretable while still allowing uniform transport through \verb|Either ReplError a| and C-string-based FFI messages.
 
 \begin{code}
 module Repl.Error (
@@ -29,4 +33,3 @@ prettyReplError e =
     ReplCompileError s -> "Compile error: " ++ s
     ReplRuntimeError s -> "Runtime error: " ++ s
 \end{code}
-

@@ -1,4 +1,10 @@
-This module is the FFI bridge between C++ and the persistent REPL state. It exposes C-callable functions that wrap a long-lived \verb|ReplCtx| and present stable status/error contracts to the C++ side.
+This module is the semantic membrane between the C++ kernel process and the Haskell REPL engine. Its central task is to convert foreign calls into controlled state transitions over a long-lived \verb|ReplCtx| while preserving a stable, C-friendly contract for status codes and error buffers.
+
+Formally, each exported endpoint implements a relation of the form
+$\Delta_{\mathrm{ffi}} : (h, x) \mapsto (h', s, p)$,
+where $h$ is a stable pointer to mutable session state, $x$ is decoded source input, $h'$ is the post-state handle, $s \in \{c\_OK, c\_ERR\}$ is a machine-level status code, and $p$ is optional textual payload. Query-style calls preserve state, while define/run/execute calls may advance cache and symbol tables.
+
+The design objective is pragmatic: keep the foreign boundary narrow, deterministic, and explicit about ownership. This is why allocation and deallocation of returned C strings are encoded in the API itself, and why exception handling is normalized before crossing the language boundary.
 
 \begin{code}
 {-# LANGUAGE ForeignFunctionInterface #-}
@@ -235,4 +241,3 @@ peekSource ptr len
   | len == 0       = peekCString ptr
   | otherwise      = peekCStringLen (ptr, fromIntegral len)
 \end{code}
-

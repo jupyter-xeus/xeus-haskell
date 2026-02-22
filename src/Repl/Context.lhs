@@ -1,4 +1,10 @@
-This module defines persistent REPL state and helpers for building module source from accumulated definitions. It centralizes context initialization and definition replacement semantics.
+This module defines the persistent memory model of the notebook session. It is the place where a sequence of user cells is transformed into a coherent evolving context rather than a collection of unrelated compile requests.
+
+At a formal level, we treat context as
+$ReplCtx = (F, C, D, \Sigma)$,
+where $F$ are compiler flags and paths, $C$ is compile cache, $D$ is ordered stored definitions, and $\Sigma$ is symbol information for inspection and completion. All higher-level REPL operations are meaningful only through controlled updates to this tuple.
+
+The key policy encoded here is redefinition shadowing. If a new snippet introduces names $N$, then old stored definitions that bind any element of $N$ are removed before append, ensuring that the latest binding governs future execution while unrelated definitions remain stable.
 
 \begin{code}
 module Repl.Context (
@@ -117,4 +123,3 @@ appendDefinition ctx snippet =
                 retainedDefs = stripRedefined (rcDefs ctx) uniqueNames
             in Right (retainedDefs ++ [StoredDef snippet uniqueNames])
 \end{code}
-

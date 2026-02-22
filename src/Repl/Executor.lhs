@@ -1,4 +1,10 @@
-This module implements high-level REPL behaviors for define/run/execute/inspect/completion-state. It orchestrates parsing decisions, compilation, execution, and symbol-table queries while threading an updated \verb|ReplCtx| on success.
+This module is the operational orchestrator of the REPL. It composes analysis, compilation, execution, and symbol lookup into user-visible commands while preserving a single evolving context across requests.
+
+Its structure can be read as a transition system over context:
+$\delta : (ctx, input) \mapsto Either\ ReplError\ ctx'$.
+Specialized transitions (\verb|replDefine|, \verb|replRun|, \verb|replExecute|, \verb|replIsComplete|) share this shape so they can be chained uniformly and reasoned about as one control algebra.
+
+This design keeps policy explicit: parsing strategy lives in \verb|Repl.Analysis|, state storage in \verb|Repl.Context|, and compilation mechanics in \verb|Repl.Compiler|, while this module remains the place where end-user intent is interpreted and dispatched.
 
 \begin{code}
 module Repl.Executor (
@@ -241,4 +247,3 @@ lookupRendered scope ident table shown =
     Right (Entry _ sigOrKind) -> Just (shown ++ " :: " ++ showExpr sigOrKind)
     Left _ -> Nothing
 \end{code}
-

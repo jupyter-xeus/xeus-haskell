@@ -1,4 +1,12 @@
-This module owns compilation and execution of transient REPL modules. It turns generated source text into compiled forms and runs selected translated bindings in the current cache context.
+This module is the compilation core of the REPL pipeline. It turns synthesized source text into executable internal form and then resolves selected bindings for evaluation against cached module context.
+
+Conceptually, it defines two transformations: a compile step
+$\Gamma : (C, src) \mapsto (cmdl, C', \Sigma')$
+and an execution step
+$\rho : (C', cmdl, ident) \mapsto IO()$.
+The first advances cache and symbols; the second realizes runtime effect by translating the chosen identifier through the accumulated binding map.
+
+By isolating these operations, the surrounding executor can compose behaviors (define, run, probe) without duplicating compiler plumbing, and performance work can focus on cache evolution rather than call-site rewrites.
 
 \begin{code}
 module Repl.Compiler (
@@ -96,4 +104,3 @@ withBuiltinAliases mp = foldl' addAlias mp (IMap.toList mp)
            then acc
            else IMap.insert aliasIdent val acc
 \end{code}
-

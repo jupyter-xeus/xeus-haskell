@@ -1,4 +1,6 @@
-This module contains small pure helpers used throughout REPL parsing and module construction. It gathers string normalization and module-assembly utilities in one place.
+This module contains the small, deterministic utilities that make the larger REPL pipeline stable. Although each function is simple, together they enforce textual normalization and module-shape invariants relied on by parsing, split planning, and execution code generation.
+
+The guiding principle is to keep low-level string and list transformations explicit and dependency-light. In practice, these helpers define canonicalization laws such as newline completion, indentation shaping, and module-header injection, so higher layers can assume normalized source structure.
 
 \begin{code}
 module Repl.Utils (
@@ -82,4 +84,3 @@ moduleHeader = unlines
 buildModule :: String -> String
 buildModule defs = moduleHeader ++ defs
 \end{code}
-

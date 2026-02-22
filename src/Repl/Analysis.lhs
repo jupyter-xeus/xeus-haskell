@@ -1,4 +1,8 @@
-This module provides parsing and lexical helpers that guide REPL command splitting, completion suggestions, and completeness checks. It combines parser-based validation with lightweight token and text scanning to keep interactive feedback responsive.
+This module implements the syntactic decision procedure for interactive cells. In notebook use, one cell may mix declarations and executable expressions, so the runtime needs a principled way to infer intent without forcing users into a strict command grammar.
+
+Operationally, the module blends parser-backed checks with lightweight lexical heuristics so that correctness and responsiveness coexist. Parser calls provide semantic authority for definition/expression validity, while token scanning supplies fast candidate extraction for completion.
+
+The core abstraction is split search: for snippet $s$ with line indices $i$, we test partitions $(d_i, r_i)$ from largest prefix to smallest and accept the first valid plan. This greedy strategy approximates user intent in the common case where declarations precede executable tails.
 
 \begin{code}
 module Repl.Analysis (
@@ -210,4 +214,3 @@ matchKeywordPrefix keyword snippet
 startsWith :: String -> String -> Bool
 startsWith prefix s = take (length prefix) s == prefix
 \end{code}
-
