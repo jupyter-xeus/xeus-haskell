@@ -130,6 +130,8 @@ build_and_install_libmhs(${MICROHS_BIN} ${MICROHS_SRC_DIR})
 
 add_library(mhs_repl_lib STATIC
     src/mhs_repl.cpp
+    src/mhs_stdout_capture_posix.cpp
+    src/mhs_stdout_capture_win.cpp
 )
 
 add_dependencies(mhs_repl_lib mhs_obj)
