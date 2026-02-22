@@ -169,7 +169,6 @@ class XHaskellKernelTests(jupyter_kernel_test.KernelTests):
         payload = self._extract_plain_text(outputs)
         self.assertIn("49", payload.strip())
 
-    @unittest.skip("xhaskell currently publishes all output as execute_result")
     def test_putstrln_emits_plaintext(self) -> None:
         """putStrLn output should surface back to the notebook."""
         self.flush_channels()
@@ -177,6 +176,60 @@ class XHaskellKernelTests(jupyter_kernel_test.KernelTests):
         self.assertEqual(reply["content"]["status"], "ok")
         payload = self._extract_plain_text(outputs)
         self.assertIn("hello from xeus", payload)
+
+    def test_execute_stdout(self) -> None:
+        """Kernel emits stdout-like content via execute_result payloads."""
+        self.flush_channels()
+        reply, outputs = self._execute_or_skip(code='putStr "hello, world"')
+        self.assertEqual(reply["content"]["status"], "ok")
+        payload = self._extract_plain_text(outputs)
+        self.assertIn("hello, world", payload)
+
+    def test_execute_stderr(self) -> None:
+        """Kernel reports failures as Jupyter error messages."""
+        self.flush_channels()
+        reply, outputs = self._execute_or_skip(code="1 `div` 0")
+        self.assertEqual(reply["content"]["status"], "error")
+        errors = [msg for msg in outputs if msg["msg_type"] == "error"]
+        self.assertTrue(errors)
+        text = "\n".join(errors[0]["content"].get("traceback", []))
+        if not text:
+            text = errors[0]["content"].get("evalue", "")
+        self.assertIn("Runtime error", text)
+
+    def test_display_data(self) -> None:
+        """Kernel may emit rich output as execute_result instead of display_data."""
+        self.flush_channels()
+        code = 'putStr "\\x02text/html\\x1F<b>Bold</b>\\x03"'
+        reply, outputs = self._execute_or_skip(code=code)
+        self.assertEqual(reply["content"]["status"], "ok")
+
+        found_html = False
+        for msg in outputs:
+            if msg["msg_type"] not in ("display_data", "execute_result"):
+                continue
+            data = msg["content"].get("data", {})
+            if "text/html" in data and "<b>Bold</b>" in data["text/html"]:
+                found_html = True
+                break
+        self.assertTrue(found_html)
+
+    def test_pager(self) -> None:
+        """Kernel currently does not use execute_reply payload pager output."""
+        self.flush_channels()
+        reply, outputs = self._execute_or_skip(code=":type putStrLn")
+        self.assertEqual(reply["content"]["status"], "ok")
+        self.assertEqual(reply["content"].get("payload", []), [])
+        payload = self._extract_plain_text(outputs)
+        self.assertIn("putStrLn ::", payload)
+
+    def test_clear_output(self) -> None:
+        """Kernel does not emit clear_output; ensure it still executes cleanly."""
+        self.flush_channels()
+        reply, outputs = self._execute_or_skip(code='putStrLn "clear-output-nop"')
+        self.assertEqual(reply["content"]["status"], "ok")
+        has_clear = any(msg["msg_type"] == "clear_output" for msg in outputs)
+        self.assertFalse(has_clear)
 
     def test_completion_filters_prefix(self) -> None:
         """Completion should honor the prefix at the cursor position."""

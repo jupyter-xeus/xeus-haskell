@@ -76,5 +76,38 @@ class KernelTests(jupyter_kernel_test.KernelTests):
         # Skip or adapt if we know how error behaves.
         pass
 
+    def test_execute_stderr(self) -> None:
+        self.flush_channels()
+        reply, output_msgs = self.execute_helper(code="1 `div` 0")
+        self.assertEqual(reply["content"]["status"], "error")
+        errors = [msg for msg in output_msgs if msg["msg_type"] == "error"]
+        self.assertTrue(errors)
+        text = "\n".join(errors[0]["content"].get("traceback", []))
+        if not text:
+            text = errors[0]["content"].get("evalue", "")
+        self.assertIn("Runtime error", text)
+
+    def test_pager(self) -> None:
+        self.flush_channels()
+        reply, output_msgs = self.execute_helper(":type putStrLn")
+        self.assertEqual(reply["content"]["status"], "ok")
+        self.assertEqual(reply["content"].get("payload", []), [])
+
+        found = False
+        for msg in output_msgs:
+            if msg["msg_type"] != "execute_result":
+                continue
+            text = msg["content"]["data"].get("text/plain", "")
+            if "putStrLn ::" in text:
+                found = True
+                break
+        self.assertTrue(found)
+
+    def test_clear_output(self) -> None:
+        self.flush_channels()
+        reply, output_msgs = self.execute_helper('putStrLn "clear-output-nop"')
+        self.assertEqual(reply["content"]["status"], "ok")
+        self.assertFalse(any(msg["msg_type"] == "clear_output" for msg in output_msgs))
+
 if __name__ == "__main__":
     unittest.main()
