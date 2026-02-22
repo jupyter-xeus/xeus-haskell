@@ -20,7 +20,6 @@ import MHSPrelude
 import Control.Exception (try, SomeException, displayException)
 import Data.IORef
 import Data.List (nub)
-import Data.Text (pack, unpack)
 import System.IO (putStrLn)
 
 import Foreign.C.String (CString, peekCString, peekCStringLen, newCString)
@@ -32,9 +31,7 @@ import Foreign.Storable (poke)
 
 import Repl.Context
 import Repl.Error
-import Repl.Utils
 import Repl.Analysis
-import Repl.Compiler
 import Repl.Executor
 
 --------------------------------------------------------------------------------
@@ -80,54 +77,80 @@ mhsReplFreeCString :: CString -> IO ()
 mhsReplFreeCString = free
 
 --------------------------------------------------------------------------------
--- Unified runner
+-- Unified runners
 --------------------------------------------------------------------------------
 
-runReplAction
-  :: (ReplCtx -> String -> IO (Either ReplError ReplCtx))
-  -> ReplHandle -> CString -> CSize -> Ptr CString -> IO CInt
-runReplAction act h srcPtr srcLen errPtr = do
+withHandleInput
+  :: ReplHandle
+  -> CString
+  -> CSize
+  -> (IORef ReplCtx -> String -> IO a)
+  -> IO a
+withHandleInput h srcPtr srcLen k = do
   ref <- deRefStablePtr h
   src <- peekSource srcPtr srcLen
-  ctx <- readIORef ref
-  result <- try (act ctx src) :: IO (Either SomeException (Either ReplError ReplCtx))
-  let normalized = case result of
-        Left ex -> Left (ReplRuntimeError (displayException ex))
-        Right r -> r
-  case normalized of
-    Left e -> writeErrorCString errPtr (prettyReplError e) >> pure c_ERR
-    Right ctx' -> writeIORef ref ctx' >> pure c_OK
+  k ref src
+
+normalizeResult
+  :: Either SomeException (Either ReplError a)
+  -> Either ReplError a
+normalizeResult result =
+  case result of
+    Left ex -> Left (ReplRuntimeError (displayException ex))
+    Right val -> val
+
+runStatefulAction
+  :: (ReplCtx -> String -> IO (Either ReplError ReplCtx))
+  -> ReplHandle
+  -> CString
+  -> CSize
+  -> Ptr CString
+  -> IO CInt
+runStatefulAction act h srcPtr srcLen errPtr =
+  withHandleInput h srcPtr srcLen $ \ref src -> do
+    ctx <- readIORef ref
+    result <- try (act ctx src) :: IO (Either SomeException (Either ReplError ReplCtx))
+    case normalizeResult result of
+      Left err -> writeErrorCString errPtr (prettyReplError err) >> pure c_ERR
+      Right ctx' -> writeIORef ref ctx' >> pure c_OK
+
+runQueryAction
+  :: (ReplCtx -> String -> IO (Either ReplError String))
+  -> ReplHandle
+  -> CString
+  -> CSize
+  -> Ptr CString
+  -> IO CInt
+runQueryAction act h srcPtr srcLen outPtr =
+  withHandleInput h srcPtr srcLen $ \ref src -> do
+    ctx <- readIORef ref
+    result <- try (act ctx src) :: IO (Either SomeException (Either ReplError String))
+    case normalizeResult result of
+      Left err -> writeErrorCString outPtr (prettyReplError err) >> pure c_ERR
+      Right value -> newCString value >>= poke outPtr >> pure c_OK
 
 --------------------------------------------------------------------------------
 -- Public FFI API
 --------------------------------------------------------------------------------
 
 mhsReplDefine :: ReplHandle -> CString -> CSize -> Ptr CString -> IO CInt
-mhsReplDefine = runReplAction replDefine
+mhsReplDefine = runStatefulAction replDefine
 
 mhsReplRun :: ReplHandle -> CString -> CSize -> Ptr CString -> IO CInt
-mhsReplRun = runReplAction replRun
+mhsReplRun = runStatefulAction replRun
 
 mhsReplExecute :: ReplHandle -> CString -> CSize -> Ptr CString -> IO CInt
-mhsReplExecute = runReplAction replExecute
+mhsReplExecute = runStatefulAction replExecute
 
 mhsReplIsComplete :: ReplHandle -> CString -> CSize -> IO CString
-mhsReplIsComplete h srcPtr srcLen = do
-  ref <- deRefStablePtr h
-  src <- peekSource srcPtr srcLen
-  ctx <- readIORef ref
-  status <- replIsComplete ctx src
-  newCString status
+mhsReplIsComplete h srcPtr srcLen =
+  withHandleInput h srcPtr srcLen $ \ref src -> do
+    ctx <- readIORef ref
+    status <- replIsComplete ctx src
+    newCString status
 
 mhsReplInspect :: ReplHandle -> CString -> CSize -> Ptr CString -> IO CInt
-mhsReplInspect h srcPtr srcLen resPtr = do
-  ref <- deRefStablePtr h
-  name <- peekSource srcPtr srcLen
-  ctx <- readIORef ref
-  result <- replInspect ctx name
-  case result of
-    Left e -> writeErrorCString resPtr (prettyReplError e) >> pure c_ERR
-    Right info -> newCString info >>= poke resPtr >> pure c_OK
+mhsReplInspect = runQueryAction replInspect
 
 mhsReplCanParseDefinition :: CString -> CSize -> IO CInt
 mhsReplCanParseDefinition ptr len = do

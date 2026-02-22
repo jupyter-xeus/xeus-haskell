@@ -2,6 +2,10 @@ module Repl.Analysis (
   canParseDefinition,
   canParseExpression,
   extractDefinitionNames,
+  SplitPlan(..),
+  firstValidSplitPlan,
+  trimWs,
+  matchKeywordPrefix,
   completionCandidates,
   reservedIds,
   isIncomplete
@@ -10,6 +14,7 @@ module Repl.Analysis (
 import qualified Prelude ()
 import MHSPrelude
 import Data.List (nub)
+import Data.Maybe (listToMaybe, mapMaybe)
 
 import MicroHs.Parse (parse, pExprTop, pTopModule)
 import MicroHs.Expr (EModule(..), EDef(..), patVars)
@@ -17,7 +22,11 @@ import MicroHs.Ident (Ident, SLoc(..))
 import MicroHs.Lex (Token(..), lex)
 
 import Repl.Error
-import Repl.Utils (ensureTrailingNewline, buildModule)
+import Repl.Utils (ensureTrailingNewline, buildModule, indent, allwsLine, isws)
+
+data SplitPlan
+  = SplitDefineOnly String
+  | SplitDefineThenRun String String
 
 --------------------------------------------------------------------------------
 -- Parser helpers
@@ -106,3 +115,41 @@ isIncomplete s = go [] s
     match '[' ']' = True
     match '{' '}' = True
     match _ _ = False
+
+firstValidSplitPlan :: String -> String -> Maybe SplitPlan
+firstValidSplitPlan currentDefs snippet =
+  let snippetLines = lines (ensureTrailingNewline snippet)
+  in listToMaybe (mapMaybe (classifySplit currentDefs snippetLines) [length snippetLines, length snippetLines - 1 .. 0])
+
+classifySplit :: String -> [String] -> Int -> Maybe SplitPlan
+classifySplit currentDefs snippetLines splitIndex
+  | not (canParseDefinition candidateDefs) = Nothing
+  | all allwsLine runLines = Just (SplitDefineOnly defPart)
+  | canParseExpression runPart = Just (SplitDefineThenRun defPart runPart)
+  | canParseExpression doRunPart = Just (SplitDefineThenRun defPart doRunPart)
+  | otherwise = Nothing
+  where
+    (defLines, runLines) = splitAt splitIndex snippetLines
+    defPart = unlines defLines
+    runPart = unlines (dropWhileEndLocal allwsLine runLines)
+    doRunPart = "do\n" ++ indent runPart
+    candidateDefs = currentDefs ++ defPart
+
+dropWhileEndLocal :: (a -> Bool) -> [a] -> [a]
+dropWhileEndLocal f = reverse . dropWhile f . reverse
+
+trimWs :: String -> String
+trimWs = dropWhile isws . reverse . dropWhile isws . reverse
+
+matchKeywordPrefix :: String -> String -> Maybe String
+matchKeywordPrefix keyword snippet
+  | startsWith keyword snippet && hasBoundary keyword snippet =
+      Just (drop (length keyword) snippet)
+  | otherwise = Nothing
+  where
+    hasBoundary key s =
+      let rest = drop (length key) s
+      in null rest || isws (head rest)
+
+startsWith :: String -> String -> Bool
+startsWith prefix s = take (length prefix) s == prefix

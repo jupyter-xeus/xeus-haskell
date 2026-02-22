@@ -10,7 +10,7 @@ import qualified Prelude ()
 import MHSPrelude
 
 import Control.Applicative ((<|>))
-import Data.Maybe (isJust, listToMaybe, mapMaybe)
+import Data.Maybe (isJust)
 
 import MicroHs.Ident (mkIdent)
 import MicroHs.SymTab (stLookup, Entry(..))
@@ -28,40 +28,39 @@ data MetaCommand
   = TypeOfExpr String
   | KindOfType String
 
-data SplitPlan
-  = SplitDefineOnly String
-  | SplitDefineThenRun String String
-
 data Completion
   = Complete
   | Incomplete
   | Invalid
 
+andThen
+  :: IO (Either ReplError a)
+  -> (a -> IO (Either ReplError b))
+  -> IO (Either ReplError b)
+andThen act next = do
+  result <- act
+  case result of
+    Left err -> pure (Left err)
+    Right val -> next val
+
+right :: a -> IO (Either ReplError a)
+right = pure . Right
+
 replDefine :: ReplCtx -> String -> IO (Either ReplError ReplCtx)
 replDefine ctx snippet =
-  case appendDefinition ctx snippetWithNewline of
+  case appendDefinition ctx (ensureTrailingNewline snippet) of
     Left err -> pure (Left err)
-    Right defsWithNew -> do
-      compiled <- compileModule ctx (moduleFromDefs defsWithNew)
-      case compiled of
-        Left err -> pure (Left err)
-        Right (_, cache', syms') ->
-          pure (Right ctx{ rcDefs = defsWithNew, rcCache = cache', rcSyms = syms' })
-  where
-    snippetWithNewline = ensureTrailingNewline snippet
+    Right defsWithNew ->
+      compileModule ctx (moduleFromDefs defsWithNew) `andThen`
+        \(_, cache', syms') ->
+          right ctx{ rcDefs = defsWithNew, rcCache = cache', rcSyms = syms' }
 
 replRun :: ReplCtx -> String -> IO (Either ReplError ReplCtx)
-replRun ctx stmt = do
-  let block = runBlock stmt
-      src = moduleSourceWith ctx block
-  compiled <- compileModule ctx src
-  case compiled of
-    Left err -> pure (Left err)
-    Right (cmdl, cache', syms') -> do
-      ran <- runAction cache' cmdl runResultIdent
-      case ran of
-        Left err -> pure (Left err)
-        Right () -> pure (Right ctx{ rcCache = cache', rcSyms = syms' })
+replRun ctx stmt =
+  compileModule ctx (moduleSourceWith ctx (runBlock stmt)) `andThen`
+    \(cmdl, cache', syms') ->
+      runAction cache' cmdl runResultIdent `andThen`
+        \() -> right ctx{ rcCache = cache', rcSyms = syms' }
 
 replIsComplete :: ReplCtx -> String -> IO String
 replIsComplete ctx snippet = pure (toText completion)
@@ -72,7 +71,7 @@ replIsComplete ctx snippet = pure (toText completion)
       | isIncomplete snippet = Incomplete
       | otherwise = Invalid
 
-    hasValidSplit = isJust (firstValidSplitPlan ctx (lines (ensureTrailingNewline snippet)))
+    hasValidSplit = isJust (firstValidSplitPlan (currentDefsSource ctx) snippet)
 
     toText state =
       case state of
@@ -93,7 +92,7 @@ replExecute :: ReplCtx -> String -> IO (Either ReplError ReplCtx)
 replExecute ctx snippet
   | Just cmd <- parseMetaCommand snippet = runMetaCommand ctx cmd
 replExecute ctx snippet =
-  case firstValidSplitPlan ctx (lines (ensureTrailingNewline snippet)) of
+  case firstValidSplitPlan (currentDefsSource ctx) snippet of
     Nothing -> pure (Left (ReplParseError "unable to parse snippet"))
     Just (SplitDefineOnly defPart) -> replDefine ctx defPart
     Just (SplitDefineThenRun defPart runPart) -> defineThenRun ctx defPart runPart
@@ -106,7 +105,8 @@ runMetaCommand ctx cmd =
 
 replTypeOf :: ReplCtx -> String -> IO (Either ReplError ReplCtx)
 replTypeOf ctx expr =
-  runProbe ctx
+  runTypedProbe
+    ctx
     ":type expects an expression"
     "failed to infer expression type"
     trimmedExpr
@@ -129,7 +129,8 @@ replTypeOf ctx expr =
 
 replKindOf :: ReplCtx -> String -> IO (Either ReplError ReplCtx)
 replKindOf ctx ty =
-  runProbe ctx
+  runTypedProbe
+    ctx
     ":kind expects a type"
     "failed to infer type kind"
     trimmedType
@@ -152,47 +153,12 @@ parseMetaCommand raw =
   where
     snippet = trimWs raw
 
-    parseWith keyword ctor s =
-      if startsWith keyword s && hasBoundary keyword s
-        then Just (ctor (drop (length keyword) s))
-        else Nothing
-
-    hasBoundary keyword s =
-      let rest = drop (length keyword) s
-      in null rest || isws (head rest)
-
-startsWith :: String -> String -> Bool
-startsWith prefix s = take (length prefix) s == prefix
-
-trimWs :: String -> String
-trimWs = dropWhile isws . dropWhileEnd isws
-
-classifySplit :: ReplCtx -> [String] -> Int -> Maybe SplitPlan
-classifySplit ctx snippetLines splitIndex
-  | not (canParseDefinition candidateDefs) = Nothing
-  | all allwsLine runLines = Just (SplitDefineOnly defPart)
-  | canParseExpression runPart = Just (SplitDefineThenRun defPart runPart)
-  | canParseExpression doRunPart = Just (SplitDefineThenRun defPart doRunPart)
-  | otherwise = Nothing
-  where
-    (defLines, runLines) = splitAt splitIndex snippetLines
-    defPart = unlines defLines
-    runPart = unlines (dropWhileEnd allwsLine runLines)
-    doRunPart = "do\n" ++ indent runPart
-    candidateDefs = currentDefsSource ctx ++ defPart
-
-firstValidSplitPlan :: ReplCtx -> [String] -> Maybe SplitPlan
-firstValidSplitPlan ctx snippetLines =
-  listToMaybe (mapMaybe (classifySplit ctx snippetLines) [length snippetLines, length snippetLines - 1 .. 0])
+    parseWith keyword ctor s = ctor <$> matchKeywordPrefix keyword s
 
 defineThenRun :: ReplCtx -> String -> String -> IO (Either ReplError ReplCtx)
-defineThenRun ctx defPart runPart = do
-  defined <- replDefine ctx defPart
-  case defined of
-    Left err -> pure (Left err)
-    Right ctx' -> replRun ctx' runPart
+defineThenRun ctx defPart runPart = replDefine ctx defPart `andThen` \ctx' -> replRun ctx' runPart
 
-runProbe
+runTypedProbe
   :: ReplCtx
   -> String
   -> String
@@ -200,18 +166,15 @@ runProbe
   -> String
   -> (Symbols -> Maybe String)
   -> IO (Either ReplError ReplCtx)
-runProbe ctx emptyInputError inferError shown src infer
+runTypedProbe ctx emptyInputError inferError shown src infer
   | null shown = pure (Left (ReplRuntimeError emptyInputError))
-  | otherwise = do
-      compiled <- compileModule ctx src
-      case compiled of
-        Left err -> pure (Left err)
-        Right (_, _, syms) ->
-          case infer syms of
-            Nothing -> pure (Left (ReplRuntimeError inferError))
-            Just inferred -> do
-              putStrLn ("> " ++ shown ++ " :: " ++ inferred)
-              pure (Right ctx)
+  | otherwise =
+      compileModule ctx src `andThen` \(_, _, syms) ->
+        case infer syms of
+          Nothing -> pure (Left (ReplRuntimeError inferError))
+          Just inferred -> do
+            putStrLn ("> " ++ shown ++ " :: " ++ inferred)
+            right ctx
 
 lookupRendered scope ident table shown =
   case stLookup scope ident table of
