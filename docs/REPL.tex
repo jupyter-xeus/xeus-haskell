@@ -1,4 +1,5 @@
 \section{MicroHs REPL Mechanism}
+\label{sec:repl}
 
 
 This document provides a technical overview of how the REPL (Read-Eval-Print Loop) is implemented in \texttt{xeus-haskell}.
@@ -137,4 +138,4 @@ During initialization, the \texttt{MicroHsRepl} constructor evaluates a trivial 
 \subsection{Advanced Usage: Display System}
 
 
-The REPL is integrated with the rich content protocol described in \href{./COMMUNICATION.tex}{COMMUNICATION.tex}. If an expression evaluates to a type that implements the \texttt{Display} typeclass, its output is automatically wrapped in the rich content markers and rendered as HTML, LaTeX, or Markdown in the notebook.
+The REPL is integrated with the rich content protocol described in \hyperref[sec:communication]{Communication and System Architecture}. If an expression evaluates to a type that implements the \texttt{Display} typeclass, its output is automatically wrapped in the rich content markers and rendered as HTML, LaTeX, or Markdown in the notebook.
