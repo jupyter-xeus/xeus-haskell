@@ -1,6 +1,4 @@
-\documentclass[11pt]{article}
-\usepackage[T1]{fontenc}
-\usepackage[utf8]{inputenc}
+\documentclass[11pt]{scrartcl}
 \usepackage{geometry}
 \usepackage{hyperref}
 \usepackage{xcolor}
@@ -29,7 +27,7 @@
 \newcommand{\todoplanned}{\textcolor{blue!70!black}{$\mathbb{P}$}}
 
 \title{Xeus-Haskell: Docs and Literate Sources}
-\author{}
+\author{Masaya Taniguchi and xeus-haskell contributors}
 \date{}
 
 \begin{document}
@@ -232,7 +230,6 @@ putStr $ show (display (HTMLString "<p style='color: red'>Hello Haskell!</p>"))
 
 \texttt{02} \texttt{text/html} \texttt{1F} \texttt{<p style='color: red'>Hello Haskell!</p>} \texttt{03}
 
-\input{src/Repl.lhs}
 \section{Contributing to xeus-haskell}
 \label{sec:contributing}
 
@@ -426,6 +423,7 @@ Status symbols: \tododone\ completed, \todopending\ pending, \todoplanned\ plann
 
 \clearpage
 \section{Literate Haskell Source}
+\input{src/Repl.lhs}
 \subsection{Snippet Analysis and Parsing Module}
 \input{src/Repl/Analysis.lhs}
 \subsection{Compilation and Execution Translation Module}
