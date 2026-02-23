@@ -145,7 +145,6 @@ The published manual is available on GitHub Pages:
 
 - [MicroHs](https://github.com/augustss/MicroHs)
 - [xeus-zmq](https://github.com/jupyter-xeus/xeus-zmq)
-- [xtl](https://github.com/xtensor-stack/xtl)
 - [nlohmann_json](https://github.com/nlohmann/json)
 - [cppzmq](https://github.com/zeromq/cppzmq)
 
