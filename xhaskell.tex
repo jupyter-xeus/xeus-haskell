@@ -6,6 +6,8 @@
 \usepackage{pifont}
 \usepackage{enumitem}
 \usepackage{minted}
+\usepackage[sfdefault]{carlito}
+\renewcommand{\familydefault}{\sfdefault}
 \geometry{margin=1in}
 
 \definecolor{xhbg}{HTML}{FAFAFA}
@@ -108,15 +110,15 @@ Jupyter Frontend \(\leftrightarrow\) Xeus C++ Library \(\leftrightarrow\) Xeus-H
 \subsection{Layer Details}
 
 
-\subsubsection{1. Jupyter and Xeus Protocol Layer}
+\subsubsection{Jupyter and Xeus Protocol Layer}
 
 
 This layer handles the ZeroMQ-based Jupyter protocol. It manages the heartbeat, shell, and control sockets.
-\subsubsection{2. Xeus to Kernel Interpreter Layer}
+\subsubsection{Xeus to Kernel Interpreter Layer}
 
 
 The \texttt{xinterpreter} implementation hooks into the Xeus kernel lifecycle. It receives execution requests and delegates them to the Haskell backend.
-\subsubsection{3. C++ Bridge to Haskell Runtime Layer}
+\subsubsection{C++ Bridge to Haskell Runtime Layer}
 
 
 This is the bridge layer between C++ and the Haskell-compiled Compiler API wrapper (\texttt{Repl.lhs}).
@@ -186,7 +188,7 @@ All content is expected to be \textbf{UTF-8} encoded.
 
 
 The protocol is abstracted in Haskell through the \texttt{Display} typeclass.
-\subsubsection{1. Display Typeclass Interface}
+\subsubsection{Display Typeclass Interface}
 
 
 To enable rich output for a custom type, implement the \texttt{Display} typeclass:
@@ -201,7 +203,7 @@ data DisplayData = DisplayData {
 \end{minted}
 
 
-\subsubsection{2. Implementation Examples}
+\subsubsection{Implementation Examples}
 
 
 \begin{minted}{haskell}
@@ -219,7 +221,7 @@ instance Display String where
 \end{minted}
 
 
-\subsubsection{3. Protocol Generation}
+\subsubsection{Protocol Generation}
 
 
 The \texttt{DisplayData} record implements a \texttt{Show} instance that automatically formats the string into the \texttt{<STX>...<ETX>} protocol.

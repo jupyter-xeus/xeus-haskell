@@ -1,6 +1,3 @@
-\section{MicroHs REPL Mechanism}
-\label{sec:repl}
-
 The MicroHs REPL layer provides the continuity required by notebooks: each cell is evaluated against a persistent semantic context rather than in isolation. The C++ Xeus interpreter forwards requests through a small FFI surface, and this module translates those requests into explicit, auditable transitions over \verb|ReplCtx|.
 
 A practical constraint of MicroHs is that startup work and incremental compilation cost must be managed carefully.
