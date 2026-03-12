@@ -25,7 +25,7 @@ serve = "jupyter lab"
 make = "*"
 cmake = "*"
 cxx-compiler = "*"
-xeus-zmq = ">=3.0.0,<4.0"
+xeus-zmq = ">=4.0.0,<5.0"
 nlohmann_json = "*"
 cppzmq = "*"
 pytest = "*"
@@ -56,7 +56,7 @@ generate = "tectonic --keep-logs -Z shell-escape xhaskell.tex"
 
 [feature.wasm-build]
 platforms = ["linux-64", "osx-arm64"]
-channels = ["https://repo.prefix.dev/emscripten-forge-dev", "conda-forge"]
+channels = ["https://prefix.dev/emscripten-forge-4x", "conda-forge"]
 
 [feature.wasm-build.dependencies]
 cmake = "*"
@@ -66,7 +66,7 @@ cxx-compiler = "*"
 jupyterlite = "*"
 jupyterlite-xeus = "*"
 jupyter_server = "*"
-emscripten_emscripten-wasm32 = "==3.1.73"
+emscripten_emscripten-wasm32 = "*"
 
 [feature.wasm-build.tasks]
 fix-emscripten-links = """
@@ -99,6 +99,8 @@ jupyter lite serve
   --XeusAddon.prefix="$PREFIX"
   --XeusAddon.mounts="$MHSDIR:/share/microhs"
   --XeusAddon.mounts="$PWD/src/XHaskell:/usr/lib/haskell-packages/microhs/XHaskell"
+  --XeusAddon.default_channels=https://repo.prefix.dev/emscripten-forge-4x
+  --XeusAddon.default_channels=https://repo.prefix.dev/conda-forge
   --contents notebooks
 """
 serve-with-example = """
@@ -108,6 +110,8 @@ jupyter lite serve
   --XeusAddon.prefix="$PREFIX"
   --XeusAddon.mounts="$MHSDIR:/share/microhs"
   --XeusAddon.mounts="$PWD/src/XHaskell:/usr/lib/haskell-packages/microhs/XHaskell"
+  --XeusAddon.default_channels=https://repo.prefix.dev/emscripten-forge-4x
+  --XeusAddon.default_channels=https://repo.prefix.dev/conda-forge
   --contents notebooks
 """
 generate = """
@@ -117,6 +121,8 @@ jupyter lite build
   --XeusAddon.prefix="$PREFIX"
   --XeusAddon.mounts="$MHSDIR:/share/microhs"
   --XeusAddon.mounts="$PWD/src/XHaskell:/usr/lib/haskell-packages/microhs/XHaskell"
+  --XeusAddon.default_channels=https://repo.prefix.dev/emscripten-forge-4x
+  --XeusAddon.default_channels=https://repo.prefix.dev/conda-forge
   --contents notebooks
   --output-dir dist
 """
@@ -127,12 +133,12 @@ jupyter lite build
 
 [feature.wasm-host]
 platforms = ["emscripten-wasm32"]
-channels = ["https://repo.prefix.dev/emscripten-forge-dev", "conda-forge"]
+channels = ["https://prefix.dev/emscripten-forge-4x", "conda-forge"]
 
 [feature.wasm-host.dependencies]
 nlohmann_json = "*"
-xeus-lite = ">=3.0,<4.0"
-xeus = ">=5.0.0,<6.0"
+xeus-lite = ">=5.0,<6.0"
+xeus = ">=6.0.0,<7.0"
 
 [feature.wasm-host.tasks]
 

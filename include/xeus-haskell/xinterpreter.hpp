@@ -40,7 +40,7 @@ namespace xeus_haskell
 
         void configure_impl() override;
 
-        
+
         void execute_request_impl(send_reply_callback cb,
                                   int execution_counter,
                                   const std::string& code,
@@ -57,7 +57,9 @@ namespace xeus_haskell
 
         nl::json kernel_info_request_impl() override;
 
-        void shutdown_request_impl() override;
+        nl::json shutdown_request_impl(bool restart) override;
+
+        nl::json interrupt_request_impl() override;
 
     private:
         MicroHsRepl m_repl;

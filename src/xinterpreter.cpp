@@ -162,11 +162,19 @@ nl::json interpreter::inspect_request_impl(const std::string &code,
   return xeus::create_inspect_reply(true, data, data);
 }
 
-void interpreter::shutdown_request_impl() { std::cout << "Bye!!" << std::endl; }
+nl::json interpreter::shutdown_request_impl(bool /*restart*/)
+{
+    std::cout << "Bye!!" << std::endl;
+    return xeus::create_shutdown_reply(false);
+}
+
+nl::json interpreter::interrupt_request_impl()
+{
+    return xeus::create_interrupt_reply();
+}
 
 nl::json interpreter::kernel_info_request_impl() {
 
-  const std::string protocol_version = "5.3";
   const std::string implementation = "xhaskell";
   const std::string implementation_version = XEUS_HASKELL_VERSION;
   const std::string language_name = "haskell";
@@ -179,15 +187,14 @@ nl::json interpreter::kernel_info_request_impl() {
   const std::string language_codemirror_mode = "";
   const std::string language_nbconvert_exporter = "";
   const std::string banner = "xhaskell";
-  const bool debugger = false;
 
   const nl::json help_links = nl::json::array();
 
   return xeus::create_info_reply(
-      protocol_version, implementation, implementation_version, language_name,
+      implementation, implementation_version, language_name,
       language_version, language_mimetype, language_file_extension,
       language_pygments_lexer, language_codemirror_mode,
-      language_nbconvert_exporter, banner, debugger, help_links);
+      language_nbconvert_exporter, banner, help_links);
 }
 
 } // namespace xeus_haskell
