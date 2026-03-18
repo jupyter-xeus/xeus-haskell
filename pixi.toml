@@ -99,8 +99,8 @@ jupyter lite serve
   --XeusAddon.prefix="$PREFIX"
   --XeusAddon.mounts="$MHSDIR:/share/microhs"
   --XeusAddon.mounts="$PWD/src/XHaskell:/usr/lib/haskell-packages/microhs/XHaskell"
-  --XeusAddon.default_channels=https://repo.prefix.dev/emscripten-forge-4x
-  --XeusAddon.default_channels=https://repo.prefix.dev/conda-forge
+  --XeusAddon.default_channels=https://prefix.dev/emscripten-forge-4x
+  --XeusAddon.default_channels=https://prefix.dev/conda-forge
   --contents notebooks
 """
 serve-with-example = """
@@ -110,8 +110,8 @@ jupyter lite serve
   --XeusAddon.prefix="$PREFIX"
   --XeusAddon.mounts="$MHSDIR:/share/microhs"
   --XeusAddon.mounts="$PWD/src/XHaskell:/usr/lib/haskell-packages/microhs/XHaskell"
-  --XeusAddon.default_channels=https://repo.prefix.dev/emscripten-forge-4x
-  --XeusAddon.default_channels=https://repo.prefix.dev/conda-forge
+  --XeusAddon.default_channels=https://prefix.dev/emscripten-forge-4x
+  --XeusAddon.default_channels=https://prefix.dev/conda-forge
   --contents notebooks
 """
 generate = """
@@ -121,8 +121,8 @@ jupyter lite build
   --XeusAddon.prefix="$PREFIX"
   --XeusAddon.mounts="$MHSDIR:/share/microhs"
   --XeusAddon.mounts="$PWD/src/XHaskell:/usr/lib/haskell-packages/microhs/XHaskell"
-  --XeusAddon.default_channels=https://repo.prefix.dev/emscripten-forge-4x
-  --XeusAddon.default_channels=https://repo.prefix.dev/conda-forge
+  --XeusAddon.default_channels=https://prefix.dev/emscripten-forge-4x
+  --XeusAddon.default_channels=https://prefix.dev/conda-forge
   --contents notebooks
   --output-dir dist
 """
