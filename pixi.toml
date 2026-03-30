@@ -131,7 +131,7 @@ rsync -av \
   "$SRC/" "$DEST/";
 export MHSDIR="$PREFIX/tmp/microhs";
 find /tmp/microhs_hs -type d -empty -delete;
-rm -rf _output;
+rm -rf dist;
 jupyter lite build
   --XeusAddon.prefix="$PREFIX"
   --XeusAddon.mounts="$MHSDIR:/share/microhs"
