@@ -74,7 +74,7 @@ endif()
 # Dependencies
 # ============
 
-set(xeus_REQUIRED_VERSION "5.0.0" CACHE STRING "Minimum xeus version required to build xeus-haskell")
+set(xeus_REQUIRED_VERSION "6.0.0" CACHE STRING "Minimum xeus version required to build xeus-haskell")
 
 find_package(xeus ${xeus_REQUIRED_VERSION} REQUIRED)
 
