@@ -61,8 +61,6 @@ channels = ["https://prefix.dev/emscripten-forge-4x", "conda-forge"]
 [feature.wasm-build.dependencies]
 cmake = "*"
 make = "*"
-c-compiler = "*"
-cxx-compiler = "*"
 jupyterlite = "*"
 jupyterlite-xeus = "*"
 jupyter_server = "*"

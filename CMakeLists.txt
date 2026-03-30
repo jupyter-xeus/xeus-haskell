@@ -316,7 +316,6 @@ if(EMSCRIPTEN)
     xeus_wasm_link_options(xhaskell "web,worker")
     target_link_options(xhaskell
       PUBLIC "SHELL: -Wno-version-check"
-      PUBLIC "SHELL: -sWASMFS"
       PUBLIC "SHELL: --pre-js ${CMAKE_CURRENT_SOURCE_DIR}/src/pre.js"
       PUBLIC "SHELL: --post-js ${CMAKE_CURRENT_SOURCE_DIR}/src/post.js"
     )
