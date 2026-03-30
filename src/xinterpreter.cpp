@@ -126,7 +126,6 @@ nl::json interpreter::complete_request_impl(const std::string &code,
   );
 }
 
-
 nl::json interpreter::inspect_request_impl(const std::string &code,
                                            int cursor_pos,
                                            int /*detail_level*/) {
