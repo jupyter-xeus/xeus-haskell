@@ -57,8 +57,6 @@ generate = "tectonic --keep-logs -Z shell-escape xhaskell.tex"
 [feature.wasm-build]
 platforms = ["linux-64", "osx-arm64"]
 channels = [
-  
-  # "/Users/thorstenbeier/src/recipes/output",
   "https://prefix.dev/emscripten-forge-4x", "conda-forge"]
 
 [feature.wasm-build.dependencies]
