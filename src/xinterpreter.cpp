@@ -21,11 +21,8 @@
 
 #include "xeus-haskell/xinterpreter.hpp"
 
-// import path / filesystem utilities for completion and inspection
-#include <filesystem>
 
 namespace nl = nlohmann;
-namespace fs = std::filesystem;
 namespace xeus_haskell {
 
 
