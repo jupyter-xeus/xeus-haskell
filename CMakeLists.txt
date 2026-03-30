@@ -74,7 +74,7 @@ endif()
 # Dependencies
 # ============
 
-set(xeus_REQUIRED_VERSION "5.0.0" CACHE STRING "Minimum xeus version required to build xeus-haskell")
+set(xeus_REQUIRED_VERSION "6.0.0" CACHE STRING "Minimum xeus version required to build xeus-haskell")
 
 find_package(xeus ${xeus_REQUIRED_VERSION} REQUIRED)
 
@@ -316,9 +316,9 @@ if(EMSCRIPTEN)
     xeus_wasm_link_options(xhaskell "web,worker")
     target_link_options(xhaskell
       PUBLIC "SHELL: -Wno-version-check"
-      PUBLIC "SHELL: -sWASMFS"
       PUBLIC "SHELL: --pre-js ${CMAKE_CURRENT_SOURCE_DIR}/src/pre.js"
       PUBLIC "SHELL: --post-js ${CMAKE_CURRENT_SOURCE_DIR}/src/post.js"
+      #   PUBLIC "SHELL: -sWASMFS"
     )
 endif()
 
