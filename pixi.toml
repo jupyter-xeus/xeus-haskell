@@ -56,13 +56,14 @@ generate = "tectonic --keep-logs -Z shell-escape xhaskell.tex"
 
 [feature.wasm-build]
 platforms = ["linux-64", "osx-arm64"]
-channels = ["https://prefix.dev/emscripten-forge-4x", "conda-forge"]
+channels = [
+  
+  # "/Users/thorstenbeier/src/recipes/output",
+  "https://prefix.dev/emscripten-forge-4x", "conda-forge"]
 
 [feature.wasm-build.dependencies]
 cmake = "*"
 make = "*"
-c-compiler = "*"
-cxx-compiler = "*"
 jupyterlite = "*"
 jupyterlite-xeus = "*"
 jupyter_server = "*"
@@ -75,7 +76,10 @@ sh -c 'find . -type l -exec ln -sf ../../../opt/emsdk/upstream/bin/{} {} \\;'
 """
 prebuild = """
 export PREFIX=$CONDA_PREFIX/../wasm-host;
-emcmake cmake
+export CMAKE_PREFIX_PATH=$PREFIX;
+export CMAKE_SYSTEM_PREFIX_PATH=$PREFIX;
+
+emcmake cmake $CMAKE_ARGS
   -Wno-dev
   -S $PWD
   -B wasm-build
@@ -95,6 +99,7 @@ serve = """
 export PREFIX=$CONDA_PREFIX/../wasm-host;
 export MHSDIR="$PREFIX/share/microhs";
 export MHS_LIBRARY_PATH="$PREFIX/usr/lib/haskell-packages/microhs";
+rm -rf _output;
 jupyter lite serve
   --XeusAddon.prefix="$PREFIX"
   --XeusAddon.mounts="$MHSDIR:/share/microhs"
@@ -116,7 +121,20 @@ jupyter lite serve
 """
 generate = """
 export PREFIX=$CONDA_PREFIX/../wasm-host;
-export MHSDIR="$PREFIX/share/microhs";
+SRC="$PREFIX/share/microhs";
+DEST="$PREFIX/tmp/microhs";
+mkdir -p "$DEST";
+rsync -av \
+  --include='*/' \
+  --include='*.hs' \
+   --include='*.hs-boot' \
+  --include='*.lhs' \
+  --include='*.mhs' \
+  --exclude='*' \
+  "$SRC/" "$DEST/";
+export MHSDIR="$PREFIX/tmp/microhs";
+find /tmp/microhs_hs -type d -empty -delete;
+rm -rf _output;
 jupyter lite build
   --XeusAddon.prefix="$PREFIX"
   --XeusAddon.mounts="$MHSDIR:/share/microhs"

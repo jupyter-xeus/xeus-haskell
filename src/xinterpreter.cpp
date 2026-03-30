@@ -21,11 +21,40 @@
 
 #include "xeus-haskell/xinterpreter.hpp"
 
-namespace nl = nlohmann;
+// import path / filesystem utilities for completion and inspection
+#include <filesystem>
 
+namespace nl = nlohmann;
+namespace fs = std::filesystem;
 namespace xeus_haskell {
 
-interpreter::interpreter() { xeus::register_interpreter(this); }
+
+
+interpreter::interpreter() { 
+  std::cout << "registering xeus-haskell..." << std::endl;
+  xeus::register_interpreter(this);
+  std::cout << "xeus-haskell registered successfully." << std::endl;
+
+  auto traverse_directory = [](const std::string path) {
+    std::cout << "Traversing directory: " << path << std::endl;
+    try {
+        for (const auto& entry : fs::recursive_directory_iterator(path)) {
+            // Print full path
+            std::cerr << entry.path() << std::endl;
+        }
+    } catch (const fs::filesystem_error& e) {
+        std::cerr << "Error: " << e.what() << std::endl;
+    }
+  };
+  // flush
+  std::cout << std::flush;
+
+  traverse_directory("/share/microhs");
+  traverse_directory("/usr/lib/haskell-packages/microhs");
+
+
+
+}
 
 void interpreter::execute_request_impl(send_reply_callback cb,
                                        int execution_counter,
@@ -72,6 +101,7 @@ void interpreter::configure_impl() {
   // after the custom_interpreter creation and before executing any request.
   // This is optional, but can be useful;
   // you can for example initialize an engine here or redirect output.
+  std::cout << "Configuring xeus-haskell interpreter..." << std::endl;
 }
 
 nl::json interpreter::is_complete_request_impl(const std::string &code) {
@@ -96,6 +126,7 @@ nl::json interpreter::complete_request_impl(const std::string &code,
   while (start > 0 && is_ident_char(code[start - 1])) {
     --start;
   }
+
 
   if (start == cursor && cursor > 0) {
     // Fallback in case locale-dependent isalnum disagrees with our identifier
@@ -125,6 +156,7 @@ nl::json interpreter::complete_request_impl(const std::string &code,
                                      static_cast<int>(cursor) /*cursor_end*/
   );
 }
+
 
 nl::json interpreter::inspect_request_impl(const std::string &code,
                                            int cursor_pos,

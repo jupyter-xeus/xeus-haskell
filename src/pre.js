@@ -33,23 +33,41 @@ const installLegacyWasmFsMountShim = () => {
   Module.FS.__xhLegacyWasmFsMountShimInstalled = true;
 };
 
-const previousPreRun = Module.preRun;
-Module.preRun = () => {
-  if (Array.isArray(previousPreRun)) {
-    previousPreRun.forEach((fn) => typeof fn === "function" && fn());
-  } else if (typeof previousPreRun === "function") {
-    previousPreRun();
-  }
+// const previousPreRun = Module.preRun;
+// Module.preRun = () => {
+//   console.log("[xeus-haskell] preRun: starting preRun sequence");
+//   if (Array.isArray(previousPreRun)) {
+//     for (let i = 0; i < previousPreRun.length; i++) {
+//       if (typeof previousPreRun[i] === "function") {
+//         const f = previousPreRun[i];
+//         console.log(`[xeus-haskell] preRun: executing previous preRun function ${f} at index ${i}`);
+//         f();
+//       }
+//     }
+//   } else if (typeof previousPreRun === "function") {
+//     previousPreRun();
+//   }
+//   console.log("[xeus-haskell] preRun: setting up environment variables");
+//   ENV.MHSDIR = "/share/microhs";
+//   ENV.MHS_LIBRARY_PATH = "/usr/lib/haskell-packages/microhs";
+//   Module.ENV.MHSDIR = ENV.MHSDIR;
+//   Module.ENV.MHS_LIBRARY_PATH = ENV.MHS_LIBRARY_PATH;
+//   //installLegacyWasmFsMountShim();
+//   console.log("[xeus-haskell] preRun: environment variables set");
+// };
 
-  ENV.MHSDIR = "/share/microhs";
-  ENV.MHS_LIBRARY_PATH = "/usr/lib/haskell-packages/microhs";
-  installLegacyWasmFsMountShim();
-};
 
-const previousRuntimeInitialized = Module.onRuntimeInitialized;
-Module.onRuntimeInitialized = () => {
-  installLegacyWasmFsMountShim();
-  if (typeof previousRuntimeInitialized === "function") {
-    previousRuntimeInitialized();
-  }
-};
+Module.preRun = Module.preRun || [];
+
+Module.preRun.push(function() {
+    console.log("This runs before the program starts");
+
+    ENV.MHSDIR = "/share/microhs/";
+    ENV.MHS_LIBRARY_PATH = "/usr/lib/haskell-packages/microhs";
+    Module.ENV.MHSDIR = ENV.MHSDIR;
+    Module.ENV.MHS_LIBRARY_PATH = ENV.MHS_LIBRARY_PATH;
+
+    FS.writeFile('/input.txt', 'Hello from preRun');
+});
+
+

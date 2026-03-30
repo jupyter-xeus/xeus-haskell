@@ -14,7 +14,7 @@ function(fetch_and_build_microhs MICROHS_BIN MICROHS_SRC_DIR)
     endif()
 
     if(EMSCRIPTEN)
-      set(HOST_ENV "EMSCRIPTEN=1" "CC=gcc" "CXX=g++" "LD=ld")
+      set(HOST_ENV "EMSCRIPTEN=1" )
     else()
       set(HOST_ENV "EMSCRIPTEN=0")
     endif()
