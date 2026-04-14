@@ -20,6 +20,7 @@ install = "cmake --install build --config Release"
 ctest = "ctest --test-dir build --build-config Release --output-on-failure"
 pytest = "pytest test --reruns 5"
 serve = "jupyter lab"
+test-wasm = "node test/test_wasm_node.mjs"
 
 [dependencies]
 make = "*"
@@ -33,8 +34,6 @@ jupyter_kernel_test = ">=0.4.3"
 nbval = "*"
 pytest-rerunfailures = "*"
 jupyterlab = "*"
-playwright-python = ">=1.58.0,<2"
-lizard = ">=1.21.0,<2"
 
 #
 # docs
@@ -61,6 +60,7 @@ channels = ["https://prefix.dev/emscripten-forge-4x", "conda-forge"]
 [feature.wasm-build.dependencies]
 cmake = "*"
 make = "*"
+nodejs = "*"
 jupyterlite = "*"
 jupyterlite-xeus = "*"
 jupyter_server = "*"
