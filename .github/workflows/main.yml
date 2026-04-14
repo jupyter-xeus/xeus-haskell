@@ -75,3 +75,7 @@ jobs:
       - name: Install
         shell: bash
         run: pixi run -e wasm-build install
+
+      - name: Test
+        shell: bash
+        run: pixi run -e wasm-build node test/test_wasm_node.mjs
