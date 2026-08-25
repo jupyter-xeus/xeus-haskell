@@ -1,0 +1,22 @@
+{
+  "display_name": "Haskell (GHC @XEUS_HASKELL_GHC_VERSION@)",
+  "argv": [
+    "@XEUS_HASKELL_KERNELSPEC_PATH@xhaskell-ghc",
+    "-f",
+    "{connection_file}"
+  ],
+  "language": "haskell",
+  "kernel_protocol_version": "5.6.0",
+  "metadata": {
+    "debugger": false,
+    "shared": {
+      "browser_wasi_shim.mjs": "share/xeus-haskell/ghc/browser_wasi_shim.mjs",
+      "browser_wasi_shim.mjs.map": "share/xeus-haskell/ghc/browser_wasi_shim.mjs.map",
+      "bsdtar.wasm": "share/xeus-haskell/ghc/bsdtar.wasm",
+      "dyld.mjs": "share/xeus-haskell/ghc/dyld.mjs",
+      "post-link.mjs": "share/xeus-haskell/ghc/post-link.mjs",
+      "prelude.mjs": "share/xeus-haskell/ghc/prelude.mjs",
+      "rootfs.tar.zst": "share/xeus-haskell/ghc/rootfs.tar.zst"
+    }
+  }
+}

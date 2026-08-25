@@ -1,0 +1,114 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <title>xhaskell browser kernel test</title>
+  </head>
+  <body>
+    <script>
+      const kernel = new URLSearchParams(window.location.search).get('kernel') || 'ghc';
+      if (!['ghc', 'microhs'].includes(kernel)) {
+        throw new Error('Select a kernel with ?kernel=ghc or ?kernel=microhs');
+      }
+      const worker = new Worker(`/test/browser/harness/${kernel}-kernel.worker.js`);
+      const pending = new Map();
+      let messageCounter = 0;
+      let resolveReady;
+      let rejectReady;
+      const ready = new Promise((resolve, reject) => {
+        resolveReady = resolve;
+        rejectReady = reject;
+      });
+
+      worker.onerror = (event) => {
+        rejectReady(new Error(event.message || 'Kernel worker failed to start'));
+      };
+      worker.onmessageerror = () => {
+        rejectReady(new Error('Kernel worker sent an unreadable message'));
+      };
+
+      worker.onmessage = (event) => {
+        const message = event.data;
+        if (message?.harness === 'ready') {
+          resolveReady();
+          return;
+        }
+        if (message?.harness === 'startup-failure') {
+          rejectReady(new Error(message.error));
+          return;
+        }
+        if (message?.harness === 'failure') {
+          pending.get(message.requestId)?.reject(new Error(message.error));
+          pending.delete(message.requestId);
+          return;
+        }
+
+        const requestId = message?.parent_header?.msg_id;
+        const request = pending.get(requestId);
+        if (!request) return;
+        if (message?.header?.msg_type === request.expectedReply) {
+          request.reply = message;
+          setTimeout(() => {
+            pending.delete(requestId);
+            request.resolve({ reply: request.reply, iopub: request.iopub });
+          }, 25);
+        } else {
+          request.iopub.push(message);
+        }
+      };
+
+      const send = async (msgType, content) => {
+        await ready;
+        const msgId = `xhaskell-browser-${++messageCounter}`;
+        const message = {
+          header: {
+            msg_id: msgId,
+            msg_type: msgType,
+            session: 'xhaskell-browser-session',
+            username: 'playwright',
+            version: '5.3',
+            date: new Date().toISOString(),
+          },
+          parent_header: {},
+          metadata: {},
+          content,
+          buffers: [],
+          channel: 'shell',
+        };
+        const response = new Promise((resolve, reject) => {
+          pending.set(msgId, {
+            resolve,
+            reject,
+            expectedReply: msgType.replace('_request', '_reply'),
+            iopub: [],
+            reply: null,
+          });
+        });
+        worker.postMessage({ harness: 'request', message });
+        return response;
+      };
+
+      window.kernelHarness = {
+        kernel,
+        ready,
+        execute: (code, options = {}) => send('execute_request', {
+          code,
+          silent: options.silent || false,
+          store_history: true,
+          user_expressions: {},
+          allow_stdin: false,
+        }),
+        complete: (code, cursorPos) => send('complete_request', {
+          code,
+          cursor_pos: cursorPos,
+        }),
+        inspect: (code, cursorPos, detailLevel = 0) => send('inspect_request', {
+          code,
+          cursor_pos: cursorPos,
+          detail_level: detailLevel,
+        }),
+        isComplete: (code) => send('is_complete_request', { code }),
+      };
+    </script>
+  </body>
+</html>

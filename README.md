@@ -1,162 +1,139 @@
-# ![xeus-haskell](xeus-logo.svg)
+# xeus-haskell
 
 [![Build Status](https://github.com/jupyter-xeus/xeus-haskell/actions/workflows/main.yml/badge.svg)](https://github.com/jupyter-xeus/xeus-haskell/actions/workflows/main.yml)
 [![Documentation](https://img.shields.io/badge/docs-passing-green)](https://jupyter-xeus.github.io/xeus-haskell/docs/xhaskell.pdf)
-[![lite-badge](https://jupyterlite.rtfd.io/en/latest/_static/badge.svg)](https://jupyter-xeus.github.io/xeus-haskell/)
-[![Zulip](https://img.shields.io/badge/social_chat-zulip-blue.svg)](https://jupyter.zulipchat.com/#narrow/channel/539737-Jupyter-Kernels)
 
-`xeus-haskell` is a Jupyter kernel for haskell based on the native implementation of the
-Jupyter protocol [xeus](https://github.com/jupyter-xeus/xeus).
+`xeus-haskell` provides Haskell Jupyter kernels built on the native
+[Jupyter protocol implementation xeus](https://github.com/jupyter-xeus/xeus).
 
-<img width="800" height="500" alt="image" src="https://github.com/user-attachments/assets/c9efa18c-13bb-4c6e-a133-dac0281a66cf" />
-
+| Kernel | Display name | Native JupyterLab | JupyterLite | Backend |
+| --- | --- | :---: | :---: | --- |
+| `xhaskell-mhs` | Haskell (MicroHs `<version>`) | Yes | Yes | MicroHs |
+| `xhaskell-ghc` | Haskell (GHC `<version>`) | No | Yes | GHC Wasm |
 
 ## Quickstart
 
-### For native JupyterLab
+Build and run locally through the supplied Linux amd64 Docker development container.
 
-```
-# Install Pixi
-# curl -fsSL https://pixi.sh/install.sh | sh
+### Native MicroHs kernel
 
+```sh
 git clone https://github.com/jupyter-xeus/xeus-haskell
-pushd xeus-haskell
-pixi run -e default prebuild
-pixi run -e default build
-pixi run -e default install
-pixi run -e default serve # JupyterLab is ready!
+cd xeus-haskell
+docker build --platform linux/amd64 -t xeus-haskell-dev .
+docker run --rm -it --platform linux/amd64 \
+  -v "$PWD:/workspace" -w /workspace xeus-haskell-dev
+# Inside the container:
+pixi run -e native native
+pixi run -e native serve
 ```
 
-### For webassembly JupyterLite
+### JupyterLite kernels
 
-```
-# Install Pixi
-# curl -fsSL https://pixi.sh/install.sh | sh
+Inside the development container:
 
-git clone https://github.com/jupyter-xeus/xeus-haskell
-pushd xeus-haskell
-pixi install -e wasm-host
-pixi run -e wasm-build prebuild
-pixi run -e wasm-build build
-pixi run -e wasm-build install
-# pixi run -e wasm-build fix-emscripten-links # You may need this
-pixi run -e wasm-build serve # JupyterLite is ready!
+```sh
+pixi run -e wasm-build wasm
+pixi run -e wasm-build serve
 ```
 
-### Start Jupyter Lite with your library (Experimental feature)
+The WebAssembly build installs both kernels. `xhaskell-ghc` builds a local
+GHC Wasm resource bundle from the pinned native-bignum flavour described in `licenses.toml`;
+it does not copy `ghc-in-browser`.
 
-To use your libraries, you mount the local directory (for example, `$PWD/example`) to `/usr/lib/haskell-packages/microhs`.
-The directory structure is as follows:
+### amd64 development container
 
-```
-/usr/lib/haskell-packages/microhs (local: $PWD/example)
-|
-+-Example
-| |
-| +-Hello.hs (`Example.Hello` module)
-|
-+-Math
-| |
-| +-Fibonacci.hs (`Math.Fibonacci` module)
-|
-.
-.
-.
+All local development targets `linux-64` through Docker; do not run Pixi tasks directly on the host.
+On an aarch64 workstation, use the supplied amd64 container; Docker Desktop
+or a Docker installation with `binfmt`/QEMU support runs it transparently.
+If `docker build --platform linux/amd64` reports `exec format error`, register
+the Docker emulator once (requires Docker administrator access):
+
+```sh
+docker run --privileged --rm tonistiigi/binfmt --install amd64
 ```
 
-The recipe is as follows:
-
-```
-pushd xeus-haskell
-pixi install -e wasm-host
-pixi run -e wasm-build prebuild
-pixi run -e wasm-build build
-pixi run -e wasm-build install
-pixi shell -e wasm-build
-pixi run -e wasm-build jupyter lite serve \
-  --XeusAddon.prefix="$PWD/.envs/wasm-host" \
-  --XeusAddon.mounts="$PWD/.envs/wasm-host/share/microhs:/share/microhs" \
-  --XeusAddon.mounts="$PWD/example/Example:/usr/lib/haskell-packages/microhs/Example" \
-  --contents notebooks/introduction_to_haskell.ipynb \
+```sh
+docker build --platform linux/amd64 -t xeus-haskell-dev .
+docker run --rm -it --platform linux/amd64 \
+  -v "$PWD:/workspace" -w /workspace \
+  xeus-haskell-dev
 ```
 
-#### HTML Output (Experimental feature)
+Inside the container, use the normal Pixi workflow:
 
-```haskell
-import XHaskell.Display
-
-newtype HTMLString = HTMLString String
-instance Display HTMLString where
-  display (HTMLString html) = DisplayData {
-      mimeType = "text/html",
-      content  = html
-  }
-instance Display String where
-  display str = DisplayData "text/plain"
-
-putStr $ show (display (HTMLString "<p style=\"color: red\">foo</p>"))
+```sh
+pixi run -e wasm-build wasm
 ```
 
-#### Generate Jupyter Lite as a static webpage
+The image runs as Ubuntu UID 1000 (`ubuntu`), matching the usual local Linux user. If the bind mount is owned by another
+host UID, either grant that user write access to the checkout or pass a
+matching Docker `--user` value and use a writable Pixi cache directory.
 
-You can generate Jupyter Lite as a static webpage with `jupyter lite generate` command.
+Pixi is the only local build entry point. GitHub Actions invokes the same
+public tasks; only Pages deployment and GitHub Release upload remain CI-only.
 
-```
-pixi run -e wasm-build jupyter lite generate \
-  --XeusAddon.prefix="$PWD/.envs/wasm-host" \
-  --XeusAddon.mounts="$PWD/.envs/wasm-host/share/microhs:/share/microhs" \
-  # --XeusAddon.mounts="$PWD/example:/usr/lib/haskell-packages/microhs" \
-  --contents notebooks/introduction_to_haskell.ipynb \
-```
+## Development
 
-## Trying it online
+| Environment | Purpose |
+| --- | --- |
+| `native` | Native MicroHs build, C++/Python tests, and JupyterLab |
+| `wasm-build` | Emscripten build tools and JupyterLite tasks |
+| `wasm-host` | `emscripten-wasm32` target libraries |
+| `browser-test` | Chromium/Playwright integration tests |
+| `docs` | LaTeX manual generation |
 
-To try out xeus-haskell interactively in your web browser, just click on the link:
+`wasm` downloads the `wasm-host` target prefix automatically.
 
-[Jupyterlite for Haskell](https://jupyter-xeus.github.io/xeus-haskell)
+Run all test tiers with:
 
-## Documentation Manual
-
-The project manual is generated as a PDF from the LaTeX docs and literate Haskell sources.
-
-Generate it locally:
-
-```bash
-pixi run -e docs generate
+```sh
+pixi run -e native test
+pixi run -e wasm-build test
 ```
 
-This creates `xhaskell.pdf` in the repository root.
+The browser tier requires the WebAssembly build and installed kernels first.
+See [test/README.md](test/README.md) for its coverage matrix.
 
-The published manual is available on GitHub Pages:
+## Layout
 
-[Xeus-Haskell Manual (PDF)](https://jupyter-xeus.github.io/xeus-haskell/docs/xhaskell.pdf)
+- `cmake/`: reusable CMake modules.
+- `docs/`: LaTeX manual and assets.
+- `notebooks/`: example notebooks.
+- `test/`: C++, Python protocol, and browser integration tests.
+- `xhaskell/common/`: shared headers and browser glue.
+- `xhaskell/microhs/`: MicroHs kernel implementation.
+- `xhaskell/ghc/`: GHC browser kernel and resource build.
 
-## Features
+Generated native and WebAssembly files live in `build/` and `wasm-build/`.
+The local GHC Wasm toolchain and generated resources are ignored beneath
+`xhaskell/ghc/`.
 
-`xeus-haskell` provides a rich interactive environment for Haskell:
+## Runtime and licenses
 
-- **Incremental Execution**: State (definitions and types) is preserved across multiple cells.
-- **Mixed Content Support**: Support for cells containing both definitions and expressions (GHCi-style).
-- **Shift+Tab Introspection**: Quick access to type signatures and kinds for identifiers.
-- **Tab Completion**: Intelligent completion suggestions for Haskell identifiers.
-- **Rich Display System**: Integrated support for rendering HTML, LaTeX, and Markdown via the `Display` typeclass.
-- **Cross-Platform**: Works natively on Linux, macOS, Windows, and in the browser via WebAssembly (JupyterLite).
+Both GHC Wasm and MicroHs use non-GMP runtimes.
+[`licenses.toml`](licenses.toml) centrally pins the native-bignum GHC source,
+toolchain, and browser assets. Generated notices
+and replacement/rebuild instructions are installed below
+`share/licenses/xeus-haskell` and mounted in JupyterLite. Each distribution's
+`SOURCE_OFFER.md` links to its verified corresponding-source bundle.
 
-## Dependencies
+See [xhaskell/microhs/README.md](xhaskell/microhs/README.md) and
+[xhaskell/ghc/README.md](xhaskell/ghc/README.md) for backend-specific details.
 
-`xeus-haskell` depends on
+## Documentation and demo
 
-- [MicroHs](https://github.com/augustss/MicroHs)
-- [xeus-zmq](https://github.com/jupyter-xeus/xeus-zmq)
-- [nlohmann_json](https://github.com/nlohmann/json)
-- [cppzmq](https://github.com/zeromq/cppzmq)
+Generate the manual with:
 
-## Contributing
+```sh
+pixi run -e docs docs
+```
 
-See [xhaskell.tex](./xhaskell.tex) and the published [Xeus-Haskell Manual (PDF)](https://jupyter-xeus.github.io/xeus-haskell/docs/xhaskell.pdf) to know how to contribute and set up a
-development environment.
+The PDF is written to `docs/_build/xhaskell.pdf`. A hosted JupyterLite demo is
+available at [jupyter-xeus.github.io/xeus-haskell](https://jupyter-xeus.github.io/xeus-haskell).
 
 ## License
 
-This software is licensed under the `Apache Software License 2.0`. See the [LICENSE](LICENSE)
-file for details.
+xeus-haskell is distributed under the Apache-2.0 license. Installed kernels
+include third-party notices, `licenses.toml`, and a version-specific
+`SOURCE_OFFER.md` for the corresponding-source bundle.

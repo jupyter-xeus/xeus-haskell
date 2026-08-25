@@ -1,0 +1,40 @@
+name: Publish corresponding source
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: prefix-dev/setup-pixi@v0
+        with:
+          cache: true
+          environments: wasm-build
+      - uses: actions/cache@v4
+        with:
+          path: .cache/corresponding-source
+          key: corresponding-source-${{ runner.os }}-${{ hashFiles('licenses.toml') }}
+      - name: Build verified source bundle
+        shell: bash
+        env:
+          XHASKELL_DISTRIBUTION_ID: ${{ github.ref_name }}
+          XHASKELL_SOURCE_OUTPUT_DIR: ${{ github.workspace }}/release-source
+          XHASKELL_SOURCE_PUBLIC_URL: https://github.com/${{ github.repository }}/releases/download/${{ github.ref_name }}
+        run: |
+          VERSION="$(sed -n 's/^version = "\(.*\)"/\1/p' pixi.toml | head -n 1)"
+          test "$XHASKELL_DISTRIBUTION_ID" = "v$VERSION"
+          pixi run -e wasm-build source
+      - name: Publish source assets
+        shell: bash
+        run: |
+          TAG="${GITHUB_REF_NAME}"
+          gh release view "$TAG" >/dev/null 2>&1 || gh release create "$TAG" --title "$TAG" --generate-notes
+          gh release upload "$TAG" release-source/*.tar.zst release-source/*.sha256 release-source/SOURCE_OFFER.md

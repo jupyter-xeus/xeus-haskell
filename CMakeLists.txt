@@ -6,24 +6,41 @@
 #The full license is in the file LICENSE, distributed with this software.
 #############################################################################
 
-cmake_minimum_required(VERSION 3.10.0)
+cmake_minimum_required(VERSION 4.2)
 project(xeus-haskell)
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
+set(XHASKELL_SOURCE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/xhaskell")
+set(XHASKELL_COMMON_DIR "${XHASKELL_SOURCE_DIR}/common")
+set(XHASKELL_MICROHS_DIR "${XHASKELL_SOURCE_DIR}/microhs")
+set(XHASKELL_GHC_DIR "${XHASKELL_SOURCE_DIR}/ghc")
+
 set(CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake;${CMAKE_MODULE_PATH}")
 
-set(XEUS_HASKELL_INCLUDE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/include)
+set(XEUS_HASKELL_INCLUDE_DIRS
+    "${XHASKELL_COMMON_DIR}/include"
+    "${XHASKELL_MICROHS_DIR}/include"
+)
 
 if(NOT DEFINED XEUS_HASKELL_MICROHS_VERSION)
     set(XEUS_HASKELL_MICROHS_VERSION "v0.15.3.0" CACHE STRING "MicroHs tag to fetch")
 endif()
 
+set(XEUS_HASKELL_LICENSES_FILE "${CMAKE_CURRENT_SOURCE_DIR}/licenses.toml")
+find_package(Python3 COMPONENTS Interpreter REQUIRED)
+execute_process(
+    COMMAND "${Python3_EXECUTABLE}" "${CMAKE_CURRENT_SOURCE_DIR}/tools/licenses.py"
+        ghc-version --manifest "${XEUS_HASKELL_LICENSES_FILE}"
+    OUTPUT_VARIABLE XEUS_HASKELL_GHC_VERSION
+    OUTPUT_STRIP_TRAILING_WHITESPACE
+    COMMAND_ERROR_IS_FATAL ANY)
+
 # Versionning
 # ===========
 
-file(STRINGS "${XEUS_HASKELL_INCLUDE_DIR}/xeus-haskell/xeus_haskell_config.hpp" version_defines
+file(STRINGS "${XHASKELL_COMMON_DIR}/include/xeus-haskell/xeus_haskell_config.hpp" version_defines
      REGEX "#define XEUS_HASKELL_VERSION_(MAJOR|MINOR|PATCH)")
 foreach (ver ${version_defines})
     if (ver MATCHES "#define XEUS_HASKELL_VERSION_(MAJOR|MINOR|PATCH) +([^ ]+)$")
@@ -39,26 +56,37 @@ message(STATUS "Building xeus-haskell v${${PROJECT_NAME}_VERSION}")
 
 include(GNUInstallDirs)
 
+install(FILES
+        "${XEUS_HASKELL_LICENSES_FILE}"
+        DESTINATION "${CMAKE_INSTALL_DATADIR}/licenses/xeus-haskell")
+
 if (NOT DEFINED XEUS_HASKELL_KERNELSPEC_PATH)
     set(XEUS_HASKELL_KERNELSPEC_PATH "${CMAKE_INSTALL_PREFIX}/${CMAKE_INSTALL_BINDIR}/")
 endif ()
 
 configure_file (
-    "${CMAKE_CURRENT_SOURCE_DIR}/share/jupyter/kernels/xhaskell/kernel.json.in"
-    "${CMAKE_CURRENT_SOURCE_DIR}/share/jupyter/kernels/xhaskell/kernel.json"
+    "${XHASKELL_MICROHS_DIR}/share/jupyter/kernels/xhaskell-mhs/kernel.json.in"
+    "${XHASKELL_MICROHS_DIR}/share/jupyter/kernels/xhaskell-mhs/kernel.json"
 )
+
+if(EMSCRIPTEN)
+    configure_file (
+        "${XHASKELL_GHC_DIR}/share/jupyter/kernels/xhaskell-ghc/kernel.json.in"
+        "${XHASKELL_GHC_DIR}/share/jupyter/kernels/xhaskell-ghc/kernel.json"
+    )
+endif()
 
 # Build options
 # =============
 
 option(XEUS_HASKELL_BUILD_STATIC "Build xeus-haskell static library" ON)
 # CHANGED: default OFF instead of ON
-OPTION(XEUS_HASKELL_BUILD_SHARED "Split xhaskell build into executable and library" OFF)
-OPTION(XEUS_HASKELL_BUILD_EXECUTABLE "Build the xhaskell executable" ON)
+OPTION(XEUS_HASKELL_BUILD_SHARED "Split xhaskell-mhs build into executable and library" OFF)
+OPTION(XEUS_HASKELL_BUILD_EXECUTABLE "Build the xhaskell-mhs executable" ON)
 
-OPTION(XEUS_HASKELL_USE_SHARED_XEUS "Link xhaskell  with the xeus shared library (instead of the static library)" ON)
-# CHANGED: default OFF instead of ON, so xhaskell links against xeus-haskell-static
-OPTION(XEUS_HASKELL_USE_SHARED_XEUS_HASKELL "Link xhaskell  with the xeus shared library (instead of the static library)" OFF)
+OPTION(XEUS_HASKELL_USE_SHARED_XEUS "Link xhaskell-mhs with the xeus shared library (instead of the static library)" ON)
+# CHANGED: default OFF instead of ON, so xhaskell-mhs links against xeus-haskell-static
+OPTION(XEUS_HASKELL_USE_SHARED_XEUS_HASKELL "Link xhaskell-mhs with the xeus shared library (instead of the static library)" OFF)
 
 if(EMSCRIPTEN)
     add_compile_definitions(XEUS_HASKELL_EMSCRIPTEN_WASM_BUILD)
@@ -109,16 +137,16 @@ endif()
 # ============
 
 set(XEUS_HASKELL_HEADERS
-    include/xeus-haskell/xeus_haskell_config.hpp
-    include/xeus-haskell/xinterpreter.hpp
+    "${XHASKELL_COMMON_DIR}/include/xeus-haskell/xeus_haskell_config.hpp"
+    "${XHASKELL_MICROHS_DIR}/include/xeus-haskell/xinterpreter.hpp"
 )
 
 set(XEUS_HASKELL_SRC
-    src/xinterpreter.cpp
+    "${XHASKELL_MICROHS_DIR}/src/xinterpreter.cpp"
 )
 
 set(XEUS_HASKELL_MAIN_SRC
-    src/main.cpp
+    "${XHASKELL_MICROHS_DIR}/src/main.cpp"
 )
 
 # MicroHs / mhs_repl integration
@@ -129,9 +157,9 @@ fetch_and_build_microhs(MICROHS_BIN MICROHS_SRC_DIR)
 build_and_install_libmhs(${MICROHS_BIN} ${MICROHS_SRC_DIR})
 
 add_library(mhs_repl_lib STATIC
-    src/mhs_repl.cpp
-    src/mhs_stdout_capture_posix.cpp
-    src/mhs_stdout_capture_win.cpp
+    "${XHASKELL_MICROHS_DIR}/src/mhs_repl.cpp"
+    "${XHASKELL_MICROHS_DIR}/src/mhs_stdout_capture_posix.cpp"
+    "${XHASKELL_MICROHS_DIR}/src/mhs_stdout_capture_win.cpp"
 )
 
 add_dependencies(mhs_repl_lib mhs_obj)
@@ -139,7 +167,7 @@ add_dependencies(mhs_repl_lib mhs_obj)
 target_include_directories(mhs_repl_lib
     PUBLIC
         ${MHS_INCLUDE_DIR}
-        ${XEUS_HASKELL_INCLUDE_DIR}
+        ${XEUS_HASKELL_INCLUDE_DIRS}
 )
 
 target_link_libraries(mhs_repl_lib
@@ -196,7 +224,7 @@ macro(xeus_haskell_set_common_options target_name)
     )
 endmacro()
 
-# Common macro kernels (xhaskell)
+# Common kernel options
 macro(xeus_haskell_set_kernel_options target_name)
     if (XEUS_HASKELL_USE_SHARED_XEUS_HASKELL)
         target_link_libraries(${target_name} PRIVATE xeus-haskell)
@@ -240,7 +268,8 @@ macro(xeus_haskell_create_target target_name linkage output_name)
 
     target_include_directories(${target_name}
                                PUBLIC
-                               $<BUILD_INTERFACE:${XEUS_HASKELL_INCLUDE_DIR}>
+                               $<BUILD_INTERFACE:${XHASKELL_COMMON_DIR}/include>
+                               $<BUILD_INTERFACE:${XHASKELL_MICROHS_DIR}/include>
                                $<INSTALL_INTERFACE:include>)
 
     if (XEUS_HASKELL_USE_SHARED_XEUS)
@@ -289,36 +318,101 @@ if (XEUS_HASKELL_BUILD_STATIC)
     list(APPEND XEUS_HASKELL_TARGETS xeus-haskell-static)
 endif ()
 
-# xhaskell (native)
+# xhaskell-mhs (native)
 # =======
 if (XEUS_HASKELL_BUILD_EXECUTABLE)
     find_package(xeus-zmq 1.0.2 REQUIRED)
-    add_executable(xhaskell ${XEUS_HASKELL_MAIN_SRC})
-    target_compile_features(xhaskell PRIVATE cxx_std_17)
-    xeus_haskell_set_common_options(xhaskell)
-    xeus_haskell_set_kernel_options(xhaskell)
-    target_link_libraries(xhaskell PRIVATE xeus-zmq)
-    target_link_libraries(xhaskell PRIVATE mhs_repl_lib)
+    add_executable(xhaskell-mhs ${XEUS_HASKELL_MAIN_SRC})
+    target_compile_features(xhaskell-mhs PRIVATE cxx_std_17)
+    xeus_haskell_set_common_options(xhaskell-mhs)
+    xeus_haskell_set_kernel_options(xhaskell-mhs)
+    target_link_libraries(xhaskell-mhs PRIVATE xeus-zmq)
+    target_link_libraries(xhaskell-mhs PRIVATE mhs_repl_lib)
 endif()
 
-# xhaskell (emscripten / wasm)
+# xhaskell-mhs and xhaskell-ghc (emscripten / wasm)
 if(EMSCRIPTEN)
     include(WasmBuildOptions)
     find_package(xeus-lite REQUIRED)
-    add_executable(xhaskell src/main_emscripten_kernel.cpp )
-    target_link_libraries(xhaskell PRIVATE xeus-lite)
-    target_compile_options(xhaskell PRIVATE -fPIC)
+    add_executable(xhaskell-mhs "${XHASKELL_MICROHS_DIR}/src/main_emscripten_kernel.cpp")
+    # Link xeus-lite and xeus statically. MAIN_MODULE pulls the wasm shared
+    # libxeus object into the link and conflicts with MicroHs' longjmp model on
+    # recent Emscripten releases.
+    get_target_property(XHASKELL_XEUS_LITE_ARCHIVE xeus-lite IMPORTED_LOCATION_RELEASE)
+    target_link_libraries(xhaskell-mhs PRIVATE "${XHASKELL_XEUS_LITE_ARCHIVE}" xeus-static)
+    target_compile_options(xhaskell-mhs PRIVATE -fPIC)
     # mhs_repl_lib is already pulled in transitively via xeus-haskell-static,
     # so linking it explicitly here would add it twice and cause duplicate symbols
-    # target_link_libraries(xhaskell PRIVATE mhs_repl_lib)
-    XEUS_HASKELL_set_kernel_options(xhaskell)
-    xeus_wasm_compile_options(xhaskell)
-    xeus_wasm_link_options(xhaskell "web,worker")
-    target_link_options(xhaskell
+    # target_link_libraries(xhaskell-mhs PRIVATE mhs_repl_lib)
+    XEUS_HASKELL_set_kernel_options(xhaskell-mhs)
+    xeus_wasm_compile_options(xhaskell-mhs)
+    xeus_wasm_link_options(xhaskell-mhs "web,worker")
+    get_target_property(XHASKELL_MHS_LINK_OPTIONS xhaskell-mhs LINK_OPTIONS)
+    list(REMOVE_ITEM XHASKELL_MHS_LINK_OPTIONS "SHELL: -s MAIN_MODULE=1")
+    set_property(TARGET xhaskell-mhs PROPERTY LINK_OPTIONS "${XHASKELL_MHS_LINK_OPTIONS}")
+    target_link_options(xhaskell-mhs
       PUBLIC "SHELL: -Wno-version-check"
-      PUBLIC "SHELL: --pre-js ${CMAKE_CURRENT_SOURCE_DIR}/src/pre.js"
-      PUBLIC "SHELL: --post-js ${CMAKE_CURRENT_SOURCE_DIR}/src/post.js"
+      PUBLIC "SHELL: --pre-js ${XHASKELL_MICROHS_DIR}/browser/pre.js"
+      PUBLIC "SHELL: --post-js ${XHASKELL_COMMON_DIR}/browser/post.js"
     )
+
+    add_executable(xhaskell-ghc
+        "${XHASKELL_GHC_DIR}/src/main_emscripten_ghc_kernel.cpp"
+        "${XHASKELL_GHC_DIR}/src/ghc_protocol.cpp"
+        "${XHASKELL_GHC_DIR}/src/ghc_protocol.hpp"
+        "${XHASKELL_GHC_DIR}/src/xghc_interpreter.cpp"
+        "${XHASKELL_GHC_DIR}/src/xghc_interpreter.hpp"
+    )
+    target_include_directories(xhaskell-ghc PRIVATE "${XHASKELL_COMMON_DIR}/include")
+    # JSPI and Emscripten MAIN_MODULE cannot be linked together in 4.0.10.
+    # Use the xeus-lite archive directly with static xeus dependencies.
+    get_target_property(XHASKELL_GHC_XEUS_LITE_ARCHIVE xeus-lite IMPORTED_LOCATION_RELEASE)
+    target_link_libraries(xhaskell-ghc PRIVATE "${XHASKELL_GHC_XEUS_LITE_ARCHIVE}" xeus-static)
+    target_compile_options(xhaskell-ghc PRIVATE -fPIC)
+    target_compile_features(xhaskell-ghc PRIVATE cxx_std_17)
+    target_compile_definitions(xhaskell-ghc PRIVATE
+      XEUS_HASKELL_GHC_VERSION="${XEUS_HASKELL_GHC_VERSION}"
+    )
+    xeus_haskell_set_common_options(xhaskell-ghc)
+    xeus_wasm_compile_options(xhaskell-ghc)
+    xeus_wasm_link_options(xhaskell-ghc "web,worker")
+    get_target_property(XHASKELL_GHC_LINK_OPTIONS xhaskell-ghc LINK_OPTIONS)
+    list(REMOVE_ITEM XHASKELL_GHC_LINK_OPTIONS "SHELL: -s MAIN_MODULE=1")
+    set_property(TARGET xhaskell-ghc PROPERTY LINK_OPTIONS "${XHASKELL_GHC_LINK_OPTIONS}")
+    target_link_options(xhaskell-ghc
+      PUBLIC "SHELL: -Wno-version-check"
+      PUBLIC "SHELL: -s EXIT_RUNTIME=0"
+      PUBLIC "SHELL: -s JSPI=1"
+      PUBLIC "SHELL: --pre-js ${XHASKELL_GHC_DIR}/browser/ghc_support.js"
+      PUBLIC "SHELL: --post-js ${XHASKELL_COMMON_DIR}/browser/post.js"
+    )
+    set_property(TARGET xhaskell-ghc APPEND PROPERTY LINK_DEPENDS
+        "${XHASKELL_GHC_DIR}/browser/ghc_support.js"
+        "${XHASKELL_COMMON_DIR}/browser/post.js")
+
+    set(XEUS_HASKELL_GHC_RESOURCES_DIR
+        "${CMAKE_BINARY_DIR}/_deps/ghc/resources"
+        CACHE PATH "Path to generated GHC JavaScript-Wasm resources")
+    set(XEUS_HASKELL_GHC_RESOURCE_FILES
+        browser_wasi_shim.mjs
+        browser_wasi_shim.mjs.map
+        bsdtar.wasm
+        dyld.mjs
+        post-link.mjs
+        prelude.mjs
+        rootfs.tar.zst)
+
+    set(XEUS_HASKELL_GHC_BUILD_DIR
+        "${CMAKE_BINARY_DIR}/_deps/ghc"
+        CACHE PATH "Build-tree directory for GHC Wasm downloads and resources")
+
+    include("${CMAKE_CURRENT_SOURCE_DIR}/cmake/GhcWasmResources.cmake")
+    xhaskell_add_ghc_resources(ghc-resources
+        SOURCE_DIR "${XHASKELL_GHC_DIR}"
+        RESOURCE_DIR "${XEUS_HASKELL_GHC_RESOURCES_DIR}"
+        BUILD_DIR "${XEUS_HASKELL_GHC_BUILD_DIR}"
+        RESOURCE_FILES ${XEUS_HASKELL_GHC_RESOURCE_FILES})
+    add_dependencies(xhaskell-ghc ghc-resources)
 endif()
 
 # Installation
@@ -341,9 +435,9 @@ if (XEUS_HASKELL_BUILD_SHARED)
            FILE "${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME}Targets.cmake")
 endif ()
 
-# Install xhaskell
+# Install xhaskell-mhs
 if (XEUS_HASKELL_BUILD_EXECUTABLE)
-    install(TARGETS xhaskell
+    install(TARGETS xhaskell-mhs
             RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})
 endif()
 
@@ -351,18 +445,31 @@ if (XEUS_HASKELL_BUILD_EXECUTABLE OR EMSCRIPTEN)
     # Configuration and data directories for jupyter and xeus-haskell
     set(XJUPYTER_DATA_DIR "share/jupyter"    CACHE STRING "Jupyter data directory")
 
-    # Install xhaskell Jupyter kernelspec
-    set(KERNELSPEC_DIR ${CMAKE_CURRENT_SOURCE_DIR}/share/jupyter/kernels)
-    install(DIRECTORY ${KERNELSPEC_DIR}
-            DESTINATION ${XJUPYTER_DATA_DIR}
+    # Install both kernelspecs for JupyterLite discovery at startup.
+    set(XHASKELL_MHS_KERNELSPEC_DIR "${XHASKELL_MICROHS_DIR}/share/jupyter/kernels/xhaskell-mhs")
+    install(DIRECTORY ${XHASKELL_MHS_KERNELSPEC_DIR}
+            DESTINATION ${XJUPYTER_DATA_DIR}/kernels
             PATTERN "*.in" EXCLUDE)
+
+    if(EMSCRIPTEN)
+        set(XHASKELL_GHC_KERNELSPEC_DIR "${XHASKELL_GHC_DIR}/share/jupyter/kernels/xhaskell-ghc")
+        install(DIRECTORY ${XHASKELL_GHC_KERNELSPEC_DIR}
+                DESTINATION ${XJUPYTER_DATA_DIR}/kernels
+                PATTERN "*.in" EXCLUDE)
+    endif()
 
 
     # Extra path for installing Jupyter kernelspec
     if (XEXTRA_JUPYTER_DATA_DIR)
-        install(DIRECTORY ${KERNELSPEC_DIR}
-                DESTINATION ${XEXTRA_JUPYTER_DATA_DIR}
+        install(DIRECTORY ${XHASKELL_MHS_KERNELSPEC_DIR}
+                DESTINATION ${XEXTRA_JUPYTER_DATA_DIR}/kernels
                 PATTERN "*.in" EXCLUDE)
+
+        if(EMSCRIPTEN)
+            install(DIRECTORY ${XHASKELL_GHC_KERNELSPEC_DIR}
+                    DESTINATION ${XEXTRA_JUPYTER_DATA_DIR}/kernels
+                    PATTERN "*.in" EXCLUDE)
+        endif()
     endif ()
 endif ()
 
@@ -370,13 +477,13 @@ endif ()
 set(XEUS_HASKELL_CONFIG_CODE "####### Expanded from \@XEUS_HASKELL_CONFIG_CODE\@ #######\n")
 set(XEUS_HASKELL_CONFIG_CODE "${XEUS_HASKELL_CONFIG_CODE}set(CMAKE_MODULE_PATH \"${CMAKE_CURRENT_SOURCE_DIR}/cmake;\${CMAKE_MODULE_PATH}\")\n")
 set(XEUS_HASKELL_CONFIG_CODE "${XEUS_HASKELL_CONFIG_CODE}##################################################")
-configure_package_config_file(${PROJECT_NAME}Config.cmake.in
+configure_package_config_file("${CMAKE_CURRENT_SOURCE_DIR}/cmake/xeus-haskellConfig.cmake.in"
                               "${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME}Config.cmake"
                               INSTALL_DESTINATION ${PROJECT_BINARY_DIR})
 
 # Configure 'xeus-haskellConfig.cmake.in for an install tree
 set(XEUS_HASKELL_CONFIG_CODE "")
-configure_package_config_file(${PROJECT_NAME}Config.cmake.in
+configure_package_config_file("${CMAKE_CURRENT_SOURCE_DIR}/cmake/xeus-haskellConfig.cmake.in"
                               "${CMAKE_CURRENT_BINARY_DIR}/CMakeFiles/${PROJECT_NAME}Config.cmake"
                               INSTALL_DESTINATION ${XEUS_HASKELL_CMAKECONFIG_INSTALL_DIR})
 
@@ -394,37 +501,66 @@ if (XEUS_HASKELL_BUILD_SHARED)
 endif ()
 
 if(EMSCRIPTEN)
-    install(TARGETS xhaskell
+    install(TARGETS xhaskell-mhs xhaskell-ghc
             ARCHIVE DESTINATION ${XEUS_HASKELL_CMAKECONFIG_INSTALL_DIR})
 
     install(FILES
-            "$<TARGET_FILE_DIR:xhaskell>/xhaskell.js"
-            "$<TARGET_FILE_DIR:xhaskell>/xhaskell.wasm"
+            "$<TARGET_FILE_DIR:xhaskell-mhs>/xhaskell-mhs.js"
+            "$<TARGET_FILE_DIR:xhaskell-mhs>/xhaskell-mhs.wasm"
             DESTINATION ${CMAKE_INSTALL_BINDIR})
+
+    install(FILES
+            "$<TARGET_FILE_DIR:xhaskell-ghc>/xhaskell-ghc.js"
+            "$<TARGET_FILE_DIR:xhaskell-ghc>/xhaskell-ghc.wasm"
+            DESTINATION ${CMAKE_INSTALL_BINDIR})
+
+    foreach(XEUS_HASKELL_GHC_RESOURCE_FILE IN LISTS XEUS_HASKELL_GHC_RESOURCE_FILES)
+        install(FILES
+                "${XEUS_HASKELL_GHC_RESOURCES_DIR}/${XEUS_HASKELL_GHC_RESOURCE_FILE}"
+                DESTINATION "${CMAKE_INSTALL_DATADIR}/xeus-haskell/ghc")
+    endforeach()
 endif ()
 
-# MicroUnitTesting / test_mhs_repl
-# ================================
+# Tier 1 / C++ contracts
+# ======================
 if(NOT EMSCRIPTEN)
     include(MicroUnitTesting)
     enable_testing()
     fetch_ut()
-    add_executable(test_mhs_repl test/test_mhs_repl.cpp)
-    add_dependencies(test_mhs_repl mhs_repl_lib)
-    target_include_directories(test_mhs_repl
+
+    add_executable(test_cpp_microhs test/cpp/microhs/test_repl.cpp)
+    add_dependencies(test_cpp_microhs mhs_repl_lib)
+    target_include_directories(test_cpp_microhs
         PUBLIC
-            $<BUILD_INTERFACE:${XEUS_HASKELL_INCLUDE_DIR}>
+            $<BUILD_INTERFACE:${XHASKELL_COMMON_DIR}/include>
+            $<BUILD_INTERFACE:${XHASKELL_MICROHS_DIR}/include>
             $<INSTALL_INTERFACE:include>
         PRIVATE
             ${MHS_INCLUDE_DIR})
-    target_compile_definitions(test_mhs_repl PRIVATE MICROHS_RUNTIME_DIR="${MICROHS_SRC_DIR}")
-    target_link_libraries(test_mhs_repl PRIVATE mhs_repl_lib Boost::ut)
-    add_test(NAME test_mhs_repl COMMAND test_mhs_repl)
+    target_compile_definitions(test_cpp_microhs
+        PRIVATE MICROHS_RUNTIME_DIR="${MICROHS_SRC_DIR}")
+    target_link_libraries(test_cpp_microhs PRIVATE mhs_repl_lib Boost::ut)
+    add_test(NAME cpp_microhs_contract COMMAND test_cpp_microhs)
+    set_tests_properties(cpp_microhs_contract
+        PROPERTIES
+            LABELS "tier1;microhs"
+            ENVIRONMENT "MHSDIR=${MICROHS_SRC_DIR}")
+
+    add_executable(test_cpp_ghc
+        test/cpp/ghc/test_protocol.cpp
+        "${XHASKELL_GHC_DIR}/src/ghc_protocol.cpp")
+    target_include_directories(test_cpp_ghc
+        PRIVATE "${XHASKELL_GHC_DIR}/src")
+    target_link_libraries(test_cpp_ghc
+        PRIVATE Boost::ut nlohmann_json::nlohmann_json)
+    add_test(NAME cpp_ghc_contract COMMAND test_cpp_ghc)
+    set_tests_properties(cpp_ghc_contract
+        PROPERTIES LABELS "tier1;ghc")
 endif()
 
 # XHaskell library
 # ===================
 install(
-    DIRECTORY ${CMAKE_SOURCE_DIR}/src/XHaskell/
+    DIRECTORY "${XHASKELL_MICROHS_DIR}/haskell/XHaskell/"
     DESTINATION usr/lib/haskell-packages/microhs/XHaskell
 )

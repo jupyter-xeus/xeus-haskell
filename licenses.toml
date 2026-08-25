@@ -1,0 +1,185 @@
+# External-source and license provenance for xeus-haskell.
+# Generated notices and corresponding source are created from this manifest;
+# no third-party source or license text is stored in this repository.
+schema_version = 1
+
+[project]
+name = "xeus-haskell"
+
+[ghc]
+repository = "https://gitlab.haskell.org/haskell-wasm/ghc.git"
+commit = "05e0ef08e100cf3bd2150adcf8e53ba9ad30519a"
+
+[[ghc.submodules]]
+path = "libffi-tarballs"
+commit = "7c51059557b68d29820a0a87cebfa6fe73c8adf5"
+
+[[ghc.submodules]]
+path = "libraries/Cabal"
+commit = "d9b0904b49dc84e0bfc79062daf2bbdf9d22a422"
+
+[[ghc.submodules]]
+path = "libraries/Win32"
+commit = "7d0772bb265a6c59eb14c441cf65c778895528df"
+
+[[ghc.submodules]]
+path = "libraries/array"
+commit = "6d59d5deb4f2a12656ab4c4371c0d12dac4875ef"
+
+[[ghc.submodules]]
+path = "libraries/binary"
+commit = "a625eee2eb9dfb4019c051b59d6007c9dded88aa"
+
+[[ghc.submodules]]
+path = "libraries/bytestring"
+commit = "d984ad00644c0157bad04900434b9d36f23633c5"
+
+[[ghc.submodules]]
+path = "libraries/containers"
+commit = "801b06e5d4392b028e519d5ca116a2881d559721"
+
+[[ghc.submodules]]
+path = "libraries/containers/containers/docs/_extensions/haddock-autolink"
+commit = "55e6950927bfc52cf0f03728a6566b1c61598e26"
+
+[[ghc.submodules]]
+path = "libraries/deepseq"
+commit = "ae2762ac241a61852c9ff4c287af234fb1ad931f"
+
+[[ghc.submodules]]
+path = "libraries/directory"
+commit = "6442a3cf04f74d82cdf8c9213324313d52b23d28"
+
+[[ghc.submodules]]
+path = "libraries/exceptions"
+commit = "81bfd6e0ca631f315658201ae02e30046678f056"
+
+[[ghc.submodules]]
+path = "libraries/file-io"
+commit = "21303160b5dd91d6197bd1d20a8796ba2a819d4e"
+
+[[ghc.submodules]]
+path = "libraries/filepath"
+commit = "cbcd0ccf92f47e6c10fb9cc513a7b26facfc19fe"
+
+[[ghc.submodules]]
+path = "libraries/haskeline"
+commit = "991953cd5d3bb9e8057de4a0d8f2cae3455865d8"
+
+[[ghc.submodules]]
+path = "libraries/hpc"
+commit = "12675279dc5cbea4ade8b5157b080390d598f03f"
+
+[[ghc.submodules]]
+path = "libraries/mtl"
+commit = "37cbd924cb71eba591a2e2b6b131767f632d22c9"
+
+[[ghc.submodules]]
+path = "libraries/os-string"
+commit = "c08666bf7bf528e607fc1eacc20032ec59e69df3"
+
+[[ghc.submodules]]
+path = "libraries/parsec"
+commit = "552730e23e1fd2dae46a60d75138b8d173492462"
+
+[[ghc.submodules]]
+path = "libraries/pretty"
+commit = "c3a1469306b35fa5d023dc570554f97f1a90435d"
+
+[[ghc.submodules]]
+path = "libraries/process"
+commit = "ae50731b5fb221a7631f7e9d818fc6716c85c51e"
+
+[[ghc.submodules]]
+path = "libraries/semaphore-compat"
+commit = "ba87d1bb0209bd9f29bda1c878ddf345f8a2b199"
+
+[[ghc.submodules]]
+path = "libraries/stm"
+commit = "23bdcc2319965911af28542e76fc01f37c107d40"
+
+[[ghc.submodules]]
+path = "libraries/template-haskell-lift"
+commit = "06c18dfc2d689baabf0e923e3fb9483ac89b8d01"
+
+[[ghc.submodules]]
+path = "libraries/template-haskell-quasiquoter"
+commit = "65246071e82819aa27922c1172861ba346612230"
+
+[[ghc.submodules]]
+path = "libraries/terminfo"
+commit = "16db154e3e97e6bff62329574163851a7090f3b6"
+
+[[ghc.submodules]]
+path = "libraries/text"
+commit = "5f343f668f421bfb30cead594e52d0ac6206ff67"
+
+[[ghc.submodules]]
+path = "libraries/time"
+commit = "507f50844802f1469ba6cadfeefd4e3fecee0416"
+
+[[ghc.submodules]]
+path = "libraries/transformers"
+commit = "cee47cca7705edafe0a5839439e679edbd61890a"
+
+[[ghc.submodules]]
+path = "libraries/unix"
+commit = "60f432b76871bd7787df07dd3e2a567caba393f5"
+
+[[ghc.submodules]]
+path = "libraries/xhtml"
+commit = "68353ccd1a2e776d6c2b11619265d8140bb7dc07"
+
+[[ghc.submodules]]
+path = "nofib"
+commit = "b7391df4540ac8b11b35e1b2e2c15819b5171798"
+
+[[ghc.submodules]]
+path = "utils/hpc"
+commit = "5923da3fe77993b7afc15b5163cffcaa7da6ecf5"
+
+[[ghc.submodules]]
+path = "utils/hsc2hs"
+commit = "fe3990b9f35000427b016a79330d9f195587cad8"
+
+[ghc.wasm]
+version = "9.15.20260331"
+
+[ghc.wasm.toolchain]
+flavour = "native"
+revision = "ec050b490a8499a1d1d1a3c093b8e760a20d4ebf"
+archive_url = "https://github.com/haskell-wasm/ghc-wasm-meta/archive/ec050b490a8499a1d1d1a3c093b8e760a20d4ebf.tar.gz"
+sha256 = "d304daf6b48412c870f009590bbd2c4f5a8b88708b89cbe13eaffc57d10d1d44"
+
+[[ghc.wasm.browser_assets]]
+path = "browser_wasi_shim/browser_wasi_shim.mjs"
+url = "https://esm.sh/gh/haskell-wasm/browser_wasi_shim@2f86b49/es2022/browser_wasi_shim.mjs"
+sha256 = "0cc73c61dd2c96a4ce5cacf3fd4d06e7eb0c12a4a5f75a788256305aa266d7db"
+
+[[ghc.wasm.browser_assets]]
+path = "browser_wasi_shim/browser_wasi_shim.mjs.map"
+url = "https://esm.sh/gh/haskell-wasm/browser_wasi_shim@2f86b49/es2022/browser_wasi_shim.mjs.map"
+sha256 = "fc4de9f8c96c5a1a540463bf90d9d1e7b22c4959e759115986e106741f248fff"
+
+[[ghc.wasm.browser_assets]]
+path = "bsdtar-wasm/bsdtar.wasm"
+url = "https://haskell-wasm.github.io/bsdtar-wasm/bsdtar.wasm"
+sha256 = "e13ebb15ca0971f6629a6313bc043c532dd9be3a0e6bb0b7f8a395de835ad0c0"
+
+[[archives]]
+id = "microhs-v0.15.3.0"
+destination = "microhs/MicroHs-v0.15.3.0.tar.gz"
+url = "https://github.com/augustss/MicroHs/archive/refs/tags/v0.15.3.0.tar.gz"
+sha256 = "f23e8fd3fe6b132224145af528a7015d120b2bb54180bcfb4167bda8a7d513aa"
+
+[[archives]]
+id = "libzmq-4.3.5"
+destination = "microhs/libzmq/zeromq-4.3.5.tar.gz"
+url = "https://github.com/zeromq/libzmq/releases/download/v4.3.5/zeromq-4.3.5.tar.gz"
+sha256 = "6653ef5910f17954861fe72332e68b03ca6e4d9c7160eb3a8de5a5a913bfab43"
+
+[[archives]]
+id = "zeromq-feedstock"
+destination = "microhs/libzmq/zeromq-feedstock-69c6d89e75cab3a1b3f5c325e2709c4daa49cbdf.tar.gz"
+url = "https://github.com/conda-forge/zeromq-feedstock/archive/69c6d89e75cab3a1b3f5c325e2709c4daa49cbdf.tar.gz"
+sha256 = "71b9f25b783190156a9f346fcd172d0c1f3d62124a4780461164aaa3196d1aeb"

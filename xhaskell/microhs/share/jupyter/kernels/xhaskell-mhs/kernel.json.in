@@ -1,0 +1,17 @@
+{
+  "display_name": "Haskell (MicroHs @XEUS_HASKELL_MICROHS_VERSION@)",
+  "argv": [
+      "@XEUS_HASKELL_KERNELSPEC_PATH@xhaskell-mhs",
+      "-f",
+      "{connection_file}"
+  ],
+  "language": "haskell",
+  "kernel_protocol_version": "5.6.0",
+  "metadata": {
+    "debugger": false
+  },
+  "env": {
+    "MHSDIR": "@CMAKE_INSTALL_PREFIX@/share/microhs",
+    "MHS_LIBRARY_PATH": "@CMAKE_INSTALL_PREFIX@/usr/lib/haskell-packages/microhs"
+  }
+}

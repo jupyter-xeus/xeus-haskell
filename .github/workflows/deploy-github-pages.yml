@@ -1,13 +1,10 @@
 name: build and deploy
-
 on:
   workflow_dispatch:
   pull_request:
-    branches:
-      - main
+    branches: [main]
   push:
-    branches:
-      - main
+    branches: [main]
 
 permissions:
   contents: read
@@ -17,59 +14,20 @@ permissions:
 jobs:
   build:
     runs-on: ubuntu-latest
-
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          - name: Github-page
-
     steps:
       - uses: actions/checkout@v5
         with:
           fetch-depth: 0
-
-      - name: Setup Pixi
-        uses: prefix-dev/setup-pixi@v0
+      - uses: prefix-dev/setup-pixi@v0
         with:
           cache: true
-
-      - name: Prepare WASM host
-        shell: bash
-        run: pixi install -e wasm-host
-
-      - name: Configure
-        shell: bash
-        run: pixi run -e wasm-build prebuild
-
-      - name: Build
-        shell: bash
-        run: pixi run -e wasm-build build
-
-      - name: Install
-        shell: bash
-        run: pixi run -e wasm-build install
-
-      - name: Jupyter Lite integration
-        shell: bash
-        run: pixi run -e wasm-build generate
-
-      - name: Prepare docs environment
-        shell: bash
-        run: pixi install -e docs
-
-      - name: Generate docs
-        shell: bash
-        run: pixi run -e docs generate
-
-      - name: Bundle docs into Pages artifact
-        shell: bash
-        run: |
-          mkdir -p dist/docs
-          cp xhaskell.pdf dist/docs/xhaskell.pdf
-
-      - name: Upload artifact
-        uses: actions/upload-pages-artifact@v4
+          environments: wasm-build
+      - uses: actions/cache@v4
+        with:
+          path: .cache/corresponding-source
+          key: corresponding-source-${{ runner.os }}-${{ hashFiles('licenses.toml') }}
+      - run: pixi run -e wasm-build pages
+      - uses: actions/upload-pages-artifact@v4
         with:
           path: ./dist
 
@@ -79,11 +37,9 @@ jobs:
     permissions:
       pages: write
       id-token: write
-
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
-
     runs-on: ubuntu-latest
     steps:
       - name: Deploy to GitHub Pages

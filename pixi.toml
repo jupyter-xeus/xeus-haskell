@@ -2,149 +2,271 @@
 authors = ["TANIGUCHI Masaya <ta2gch@gmail.com>"]
 channels = ["conda-forge"]
 name = "xeus-haskell"
-version = "0.1.0"
-platforms = ["linux-64", "linux-aarch64", "osx-arm64", "win-64"]
+version = "0.2.0"
+platforms = ["linux-64"]
 
-[tasks]
-prebuild = """
-cmake
-  -S $PWD
-  -B build
-  -DCMAKE_BUILD_TYPE=Release
-  -DCMAKE_INSTALL_PREFIX="$CONDA_PREFIX"
-  -DCMAKE_PREFIX_PATH="$CONDA_PREFIX"
+[feature.native]
+platforms = ["linux-64"]
+channels = ["conda-forge"]
+
+[feature.native.tasks]
+native-configure = """
+cmake -S "$PWD" -B build -DCMAKE_BUILD_TYPE=Release \
+  -DCMAKE_INSTALL_PREFIX="$CONDA_PREFIX" -DCMAKE_PREFIX_PATH="$CONDA_PREFIX" \
   -DCMAKE_FIND_ROOT_PATH_MODE_PACKAGE=ON
 """
-build = "cmake --build build --config Release"
-install = "cmake --install build --config Release"
-ctest = "ctest --test-dir build --build-config Release --output-on-failure"
-pytest = "pytest test --reruns 5"
-serve = "jupyter lab"
-test-wasm = "node test/test_wasm_node.mjs"
+[feature.native.tasks.native-build]
+cmd = """
+cmake --build build --config Release
+"""
+depends-on = ["native-configure"]
 
-[dependencies]
-make = "*"
-cmake = "*"
-cxx-compiler = "*"
+[feature.native.tasks.native-install]
+cmd = """
+cmake --install build --config Release
+"""
+depends-on = ["native-build"]
+
+[feature.native.tasks.native]
+depends-on = ["native-install"]
+description = "Configure, build, and install the native MicroHs kernel"
+
+[feature.native.tasks.test]
+cmd = """
+set -e
+ctest --test-dir build --build-config Release --output-on-failure
+pytest -c test/python/pytest.ini test/python
+"""
+depends-on = ["native"]
+description = "Run native C++ and Python contracts"
+
+[feature.native.tasks.serve]
+cmd = """
+jupyter lab
+"""
+depends-on = ["native"]
+description = "Launch native JupyterLab"
+
+[feature.native.dependencies]
+make = ">=4.4,<5"
+cmake = ">=4.2,<5"
+cxx-compiler = ">=1.11,<2"
 xeus-zmq = ">=4.0.0,<5.0"
-nlohmann_json = "*"
-cppzmq = "*"
-pytest = "*"
-jupyter_kernel_test = ">=0.4.3"
-nbval = "*"
-pytest-rerunfailures = "*"
-jupyterlab = "*"
+nlohmann_json = ">=3.12,<4"
+pytest = ">=9,<10"
+python = ">=3.11,<4"
+jupyter_kernel_test = ">=0.4.3,<1"
+jupyterlab = ">=4.5,<5"
 
-#
-# docs
-#
+# Documentation
 [feature.docs]
-platforms = ["linux-64", "linux-aarch64", "osx-arm64"]
+platforms = ["linux-64"]
 channels = ["conda-forge"]
 
 [feature.docs.dependencies]
-tectonic = "*"
-pygments = "*"
+tectonic = ">=0.15,<0.16"
+pygments = ">=2.19,<3"
 
-[feature.docs.tasks]
-generate = "tectonic --keep-logs -Z shell-escape xhaskell.tex"
+[feature.docs.tasks.docs]
+cmd = """
+set -e
+mkdir -p _build
+tectonic --keep-logs -Z shell-escape --outdir _build xhaskell.tex
+"""
+cwd = "docs"
+description = "Build the PDF documentation"
 
-#
-# wasm-build
-#
-
+# WebAssembly build tools
 [feature.wasm-build]
-platforms = ["linux-64", "osx-arm64"]
+platforms = ["linux-64"]
 channels = ["https://prefix.dev/emscripten-forge-4x", "conda-forge"]
 
 [feature.wasm-build.dependencies]
-cmake = "*"
-make = "*"
-nodejs = "*"
-jupyterlite = "*"
-jupyterlite-xeus = "*"
-jupyter_server = "*"
-emscripten_emscripten-wasm32 = "*"
+bash = ">=5.2,<6"
+cmake = ">=4.2,<5"
+coreutils = ">=9.5,<10"
+curl = ">=8.19,<9"
+findutils = ">=4.10,<5"
+emscripten_emscripten-wasm32 = ">=4,<5"
+jq = ">=1.8,<2"
+make = ">=4.4,<5"
+python = ">=3.11,<4"
+jupyterlite = ">=0.7,<0.8"
+jupyterlite-xeus = ">=4.5,<5"
+jupyter_server = ">=2.17,<3"
+sed = ">=4.10,<5"
+tar = ">=1.35,<2"
+unzip = ">=6,<7"
+zstd = ">=1.5,<2"
+cxx-compiler = ">=1.11,<2"
+
+[feature.wasm-build.activation.env]
+XHASKELL_WASM_PREFIX = "$CONDA_PREFIX/../wasm-host"
+XHASKELL_MICROHS_DIR = "$CONDA_PREFIX/../wasm-host/share/microhs"
 
 [feature.wasm-build.tasks]
-fix-emscripten-links = """
-cd "$CONDA_PREFIX/__clobbers__/emscripten_emscripten-wasm32/bin" &&
-sh -c 'find . -type l -exec ln -sf ../../../opt/emsdk/upstream/bin/{} {} \\;'
+wasm-host = """
+pixi install -e wasm-host --platform emscripten-wasm32
 """
-prebuild = """
-export PREFIX=$CONDA_PREFIX/../wasm-host;
-emcmake cmake
-  -Wno-dev
-  -S $PWD
-  -B wasm-build
-  -DCMAKE_BUILD_TYPE=Release
-  -DCMAKE_INSTALL_PREFIX="$PREFIX"
-  -DCMAKE_PREFIX_PATH="$PREFIX"
-  -DCMAKE_FIND_ROOT_PATH_MODE_PACKAGE=ON
-  -DCMAKE_C_FLAGS=""
-  -DCMAKE_CXX_FLAGS=""
-  -DCMAKE_EXE_LINKER_FLAGS=""
-  -DCMAKE_SHARED_LINKER_FLAGS=""
-  -DCMAKE_SYSTEM_NAME=Emscripten
-"""
-build = "emmake make -C wasm-build"
-install = "emmake make -C wasm-build install"
-serve = """
-export PREFIX=$CONDA_PREFIX/../wasm-host;
-export MHSDIR="$PREFIX/share/microhs";
-export MHS_LIBRARY_PATH="$PREFIX/usr/lib/haskell-packages/microhs";
-jupyter lite serve
-  --XeusAddon.prefix="$PREFIX"
-  --XeusAddon.mounts="$MHSDIR:/share/microhs"
-  --XeusAddon.mounts="$PWD/src/XHaskell:/usr/lib/haskell-packages/microhs/XHaskell"
-  --XeusAddon.default_channels=https://prefix.dev/emscripten-forge-4x
-  --XeusAddon.default_channels=https://prefix.dev/conda-forge
-  --contents notebooks
-"""
-serve-with-example = """
-export PREFIX=$CONDA_PREFIX/../wasm-host;
-export MHSDIR="$PREFIX/share/microhs";
-jupyter lite serve
-  --XeusAddon.prefix="$PREFIX"
-  --XeusAddon.mounts="$MHSDIR:/share/microhs"
-  --XeusAddon.mounts="$PWD/src/XHaskell:/usr/lib/haskell-packages/microhs/XHaskell"
-  --XeusAddon.default_channels=https://prefix.dev/emscripten-forge-4x
-  --XeusAddon.default_channels=https://prefix.dev/conda-forge
-  --contents notebooks
-"""
-generate = """
-export PREFIX=$CONDA_PREFIX/../wasm-host;
-export MHSDIR="$PREFIX/share/microhs";
-jupyter lite build
-  --XeusAddon.prefix="$PREFIX"
-  --XeusAddon.mounts="$MHSDIR:/share/microhs"
-  --XeusAddon.mounts="$PWD/src/XHaskell:/usr/lib/haskell-packages/microhs/XHaskell"
-  --XeusAddon.default_channels=https://prefix.dev/emscripten-forge-4x
-  --XeusAddon.default_channels=https://prefix.dev/conda-forge
-  --contents notebooks
-  --output-dir dist
-"""
+fix-emscripten-links = '''
+sh -c 'link_dir="$CONDA_PREFIX/__clobbers__/emscripten_emscripten-wasm32/bin"; test -d "$link_dir" || exit 0; cd "$link_dir"; find . -type l -exec ln -sf ../../../opt/emsdk/upstream/bin/{} {} \;'
+'''
 
-#
-# wasm-host
-#
+[feature.wasm-build.tasks.wasm-configure]
+cmd = """
+emcmake cmake -Wno-dev -S "$PWD" -B wasm-build -DCMAKE_BUILD_TYPE=Release \\
+  -DCMAKE_INSTALL_PREFIX="$XHASKELL_WASM_PREFIX" -DCMAKE_PREFIX_PATH="$XHASKELL_WASM_PREFIX" \\
+  -DCMAKE_FIND_ROOT_PATH_MODE_PACKAGE=ON -DCMAKE_C_FLAGS="" -DCMAKE_CXX_FLAGS="" \\
+  -DCMAKE_EXE_LINKER_FLAGS="" -DCMAKE_SHARED_LINKER_FLAGS="" -DCMAKE_SYSTEM_NAME=Emscripten
+"""
+depends-on = ["wasm-host", "fix-emscripten-links"]
+
+[feature.wasm-build.tasks.wasm-build]
+cmd = """
+cmake --build wasm-build --config Release
+"""
+depends-on = ["wasm-configure"]
+
+[feature.wasm-build.tasks.wasm-install]
+cmd = """
+cmake --install wasm-build --config Release
+"""
+depends-on = ["wasm-build"]
+
+[feature.wasm-build.tasks.wasm]
+depends-on = ["wasm-install"]
+description = "Download inputs, build, and install both Wasm kernels"
+
+[feature.wasm-build.tasks.source]
+cmd = """
+set -e
+SOURCE_ID="$XHASKELL_DISTRIBUTION_ID"
+test -n "$SOURCE_ID" || SOURCE_ID="$(git rev-parse --short=12 HEAD)"
+SOURCE_DIR="$XHASKELL_SOURCE_OUTPUT_DIR"
+test -n "$SOURCE_DIR" || SOURCE_DIR="$PWD/wasm-build/corresponding-source/$SOURCE_ID"
+SOURCE_URL="$XHASKELL_SOURCE_PUBLIC_URL"
+test -n "$SOURCE_URL" || SOURCE_URL="/corresponding-source/$SOURCE_ID"
+python tools/build_corresponding_source.py --cache-dir "$PWD/.cache/corresponding-source" \\
+  --output-dir "$SOURCE_DIR" --distribution-id "$SOURCE_ID" --public-url "$SOURCE_URL"
+"""
+description = "Build the verified corresponding-source bundle"
+
+[feature.wasm-build.tasks.pages-source]
+cmd = """
+XHASKELL_SOURCE_LICENSE_DIR="$XHASKELL_WASM_PREFIX/share/licenses/xeus-haskell" \
+  pixi run -e wasm-build source
+"""
+depends-on = ["wasm"]
+
+[feature.wasm-build.tasks.pages]
+cmd = """
+set -e
+SOURCE_ID="$XHASKELL_DISTRIBUTION_ID"
+test -n "$SOURCE_ID" || SOURCE_ID="$(git rev-parse --short=12 HEAD)"
+SOURCE_DIR="$XHASKELL_SOURCE_OUTPUT_DIR"
+test -n "$SOURCE_DIR" || SOURCE_DIR="$PWD/wasm-build/corresponding-source/$SOURCE_ID"
+LICENSE_DIR="$XHASKELL_WASM_PREFIX/share/licenses/xeus-haskell"
+jupyter lite build --XeusAddon.prefix="$XHASKELL_WASM_PREFIX" \\
+  --XeusAddon.mounts="$XHASKELL_MICROHS_DIR:/share/microhs" \\
+  --XeusAddon.mounts="$PWD/xhaskell/microhs/haskell/XHaskell:/usr/lib/haskell-packages/microhs/XHaskell" \\
+  --XeusAddon.mounts="$LICENSE_DIR:/usr/share/licenses/xeus-haskell" \\
+  --XeusAddon.default_channels=https://prefix.dev/emscripten-forge-4x \\
+  --XeusAddon.default_channels=https://prefix.dev/conda-forge --contents notebooks --output-dir dist
+mkdir -p "dist/corresponding-source/$SOURCE_ID"
+cp "$SOURCE_DIR"/*.tar.zst "$SOURCE_DIR"/*.sha256 "dist/corresponding-source/$SOURCE_ID/"
+python test/python/audit_jupyterlite_licenses.py dist
+pixi run -e docs docs
+mkdir -p dist/docs && cp docs/_build/xhaskell.pdf dist/docs/xhaskell.pdf
+"""
+depends-on = ["pages-source"]
+description = "Build and audit the Pages distribution"
+
+[feature.wasm-build.tasks.test]
+cmd = """
+set -e
+pixi install -e browser-test
+pixi run -e browser-test install-browsers
+pixi run -e browser-test test
+"""
+depends-on = ["wasm"]
+description = "Run Chromium contracts against both Wasm kernels"
+
+[feature.wasm-build.tasks.serve]
+cmd = """
+jupyter lite serve --XeusAddon.prefix="$XHASKELL_WASM_PREFIX" \\
+  --XeusAddon.mounts="$XHASKELL_MICROHS_DIR:/share/microhs" \\
+  --XeusAddon.mounts="$PWD/xhaskell/microhs/haskell/XHaskell:/usr/lib/haskell-packages/microhs/XHaskell" \\
+  --XeusAddon.mounts="$XHASKELL_WASM_PREFIX/share/licenses/xeus-haskell:/usr/share/licenses/xeus-haskell" \\
+  --XeusAddon.default_channels=https://prefix.dev/emscripten-forge-4x \\
+  --XeusAddon.default_channels=https://prefix.dev/conda-forge --contents notebooks
+"""
+depends-on = ["wasm"]
+description = "Serve JupyterLite with both Haskell kernels"
 
 [feature.wasm-host]
 platforms = ["emscripten-wasm32"]
 channels = ["https://prefix.dev/emscripten-forge-4x", "conda-forge"]
 
 [feature.wasm-host.dependencies]
-nlohmann_json = "*"
+nlohmann_json = ">=3.12,<4"
 xeus-lite = ">=5.0,<6.0"
 xeus = ">=6.0.0,<7.0"
 
-[feature.wasm-host.tasks]
+# Chromium integration tests
 
-#
+[feature.browser-test]
+platforms = ["linux-64"]
+channels = ["conda-forge"]
+
+[feature.browser-test.dependencies]
+nodejs = ">=22,<27"
+playwright = ">=1.61,<2"
+
+[feature.browser-test.target.linux-64.dependencies]
+alsa-lib = ">=1.2,<2"
+at-spi2-atk = ">=2.38,<3"
+at-spi2-core = ">=2.40,<3"
+atk = ">=2.38,<3"
+cairo = ">=1.18,<2"
+dbus = ">=1.16,<2"
+expat = ">=2.8,<3"
+glib = ">=2.88,<3"
+libcups = ">=2.3,<3"
+libgbm = ">=1.0,<2"
+libudev = ">=257,<258"
+libxcb = ">=1.17,<2"
+libxkbcommon = ">=1.13,<2"
+nspr = ">=4.38,<5"
+nss = ">=3.118,<4"
+pango = ">=1.56,<2"
+xorg-libx11 = ">=1.8,<2"
+xorg-libxcomposite = ">=0.4,<1"
+xorg-libxdamage = ">=1.1,<2"
+xorg-libxext = ">=1.3,<2"
+xorg-libxfixes = ">=6,<7"
+xorg-libxrandr = ">=1.5,<2"
+
+[feature.browser-test.activation.env]
+LD_LIBRARY_PATH = "$CONDA_PREFIX/lib"
+
+[feature.browser-test.tasks.install-browsers]
+cmd = """
+playwright install chromium
+"""
+description = "Install Chromium for Playwright"
+
+[feature.browser-test.tasks.test]
+cmd = """
+NODE_PATH=$CONDA_PREFIX/lib/node_modules \
+  playwright test --config test/browser/playwright.config.cjs
+"""
+description = "Run both Wasm kernel contracts in Chromium"
+
 # Environments
-#
 
 [environments]
+native = { features = ["native"], no-default-feature = true }
 docs = { features = ["docs"], no-default-feature = true }
+browser-test = { features = ["browser-test"], no-default-feature = true }
 wasm-build = { features = ["wasm-build"], no-default-feature = true }
 wasm-host = { features = ["wasm-host"], no-default-feature = true }

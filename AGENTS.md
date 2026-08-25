@@ -4,12 +4,14 @@ Welcome, fellow agent! This document provides essential information for AI agent
 
 ## Project Overview
 
-`xeus-haskell` is a Jupyter kernel for Haskell based on the native implementation of the Jupyter protocol [xeus](https://github.com/jupyter-xeus/xeus). It uses [MicroHs](https://github.com/augustss/MicroHs) as the Haskell implementation.
+`xeus-haskell` provides Jupyter kernels for Haskell based on the native
+implementation of the Jupyter protocol [xeus](https://github.com/jupyter-xeus/xeus).
+It supports MicroHs natively and in WebAssembly, plus GHC in WebAssembly.
 
 ## Tech Stack
 
 - **C++**: Core kernel implementation using `xeus` and `xeus-zmq`.
-- **Haskell (MicroHs)**: Used for Haskell code execution.
+- **Haskell**: MicroHs powers the native and browser MicroHs kernel; GHC Wasm powers the browser GHC kernel.
 - **Pixi**: Package management and workflow automation.
 - **CMake**: Build system.
 - **WebAssembly (Emscripten)**: Support for JupyterLite through `xeus-lite`.
@@ -18,62 +20,72 @@ Welcome, fellow agent! This document provides essential information for AI agent
 
 The project uses `pixi` for environment management. Key environments defined in `pixi.toml`:
 
-- **default**: Native development environment (CMake, compilers, pytest, JupyterLab).
-- **wasm-build**: Tools for cross-compiling to WebAssembly (Emscripten).
-- **wasm-host**: Emscripten-specific dependencies (xeus-lite).
-- **docs**: MkDocs environment for documentation.
+- **native**: Native development environment (CMake, compilers, pytest, JupyterLab).
+- **wasm-build**: Emscripten Forge toolchain and JupyterLite build tasks.
+- **wasm-host**: `emscripten-wasm32` target prefix containing `xeus-lite` and
+  related libraries; despite the historical environment name, it is not a
+  host toolchain.
+- **browser-test**: Chromium integration-test tooling.
+- **docs**: Tectonic environment for building the LaTeX manual.
+
+Each environment and its feature use the same name: `native`, `docs`,
+`wasm-build`, `wasm-host`, and `browser-test`.
 
 ## Common Workflows
 
-Agents should use `pixi run -e <environment> <task>` to perform operations.
+Agents must run `pixi run -e <environment> <task>` inside the supplied `linux/amd64` Docker development container.
 
 ### Native Development
 
 ```bash
-# Prepare build directory
-pixi run prebuild
+# Download inputs, configure, build, and install the native kernel
+pixi run -e native native
 
-# Build the kernel
-pixi run build
-
-# Install the kernel
-pixi run install
-
-# Run tests
-pixi run ctest
-pixi run pytest
+# Run native C++ and Python tests
+pixi run -e native test
 
 # Launch JupyterLab with the kernel
-pixi run serve
+pixi run -e native serve
 ```
 
 ### WebAssembly / JupyterLite
 
 ```bash
-# Prepare host dependencies
-pixi install -e wasm-host
+# Download inputs, configure, build, and install both Wasm kernels
+pixi run -e wasm-build wasm
 
-# Build for WebAssembly
-pixi run -e wasm-build prebuild
-pixi run -e wasm-build build
-pixi run -e wasm-build install
+# Run Chromium integration tests
+pixi run -e wasm-build test
 
 # Serve JupyterLite locally
 pixi run -e wasm-build serve
 ```
 
+### Documentation
+
+```bash
+pixi run -e docs docs
+```
+
 ## Repository Structure
 
-- `src/`: C++ source files for the kernel.
-- `include/`: C++ header files.
-- `share/`: Data files, including Haskell/MicroHs libraries.
-- `test/`: Python-based kernel tests.
+- `cmake/`: CMake modules and package configuration templates.
+- `docs/`: LaTeX manual and documentation assets.
 - `notebooks/`: Example Jupyter notebooks.
-- `cmake/`: CMake modules.
+- `test/`: Native, Jupyter protocol, and WebAssembly integration tests.
+- `xhaskell/common/`: Shared headers and WebAssembly browser glue.
+- `xhaskell/microhs/`: MicroHs kernel implementation and kernelspec.
+- `xhaskell/ghc/`: GHC browser kernel implementation and resource build.
+
+Backend directories separate code by role: `browser/` contains JavaScript
+glue, `haskell/` contains Haskell modules, `include/` and `src/` contain
+C++ headers and sources, and `share/` contains installed data.
 
 ## Agent Guidelines
 
 1. **Use Pixi**: Always prefer `pixi run` for building and testing to ensure the correct environment and dependencies are used.
-2. **Cross-Compilation**: When working on WebAssembly features, remember that binaries for `wasm-host` are built in the `wasm-build` environment.
-3. **MicroHs**: Be aware that this kernel specifically uses MicroHs, which may have differences from GHC.
+2. **Cross-Compilation**: `wasm-build` runs the Emscripten Forge toolchain;
+   `wasm-host` is the separately installed `emscripten-wasm32` target prefix
+   consumed through `CMAKE_PREFIX_PATH`.
+3. **Backends**: Keep MicroHs compatibility constraints separate from the browser-only GHC Wasm implementation.
 4. **Standard Locations**: Keep build artifacts in `build/` for native and `wasm-build/` for WASM.

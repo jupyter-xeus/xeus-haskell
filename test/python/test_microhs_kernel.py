@@ -1,0 +1,319 @@
+#############################################################################
+# Copyright (c) 2025, Masaya Taniguchi
+#
+# Distributed under the terms of the Apache Software License 2.0.
+#
+# The full license is in the file LICENSE, distributed with this software.
+#############################################################################
+
+"""Tier-2 Jupyter protocol contract for the native MicroHs kernel."""
+
+from __future__ import annotations
+
+from typing import Any
+
+import jupyter_kernel_test
+
+from common.contract import display_value, visible_text
+
+# MicroHs warm-up compiles modules on first execute; give it plenty of time.
+jupyter_kernel_test.TIMEOUT = 90
+
+
+class MicroHsKernelContract(jupyter_kernel_test.KernelTests):
+    """Exercise the installed MicroHs kernel through Jupyter messages."""
+
+    kernel_name = "xhaskell-mhs"
+    language_name = "haskell"
+
+    completion_samples: list[dict[str, str]] = [
+        {"text": "putStr", "cursor_pos": 6},
+        {"text": "whe", "cursor_pos": 3},
+    ]
+    complete_code_samples: list[str] = [
+        "1 + 1",
+        "x = 42\nx + 1",
+        "putStrLn \"hello\"",
+        "data Color = Red | Green | Blue",
+    ]
+    incomplete_code_samples: list[str] = []
+    invalid_code_samples: list[str] = ["1 + *"]
+    code_hello_world = ""  # xhaskell currently uses execute_result for IO output
+    code_stderr = ""
+    code_page_something = ""
+    code_generate_error = "1 `div` 0"
+    code_execute_result = [{"code": "2 + 2", "result": "4\n"}]
+    code_display_data = []
+    code_history_pattern = ""
+    supported_history_operations = ()
+    code_inspect_sample = "putStrLn"
+    code_clear_output = ""
+
+    _kernel_info_reply: dict[str, Any] | None = None
+
+    @classmethod
+    def setUpClass(cls) -> None:
+        """Start one installed kernel and fail if it is unavailable."""
+        super().setUpClass()
+        cls._kernel_info_reply = cls._request_kernel_info_reply()
+
+    @classmethod
+    def _shutdown_kernel(cls) -> None:
+        cls.kc.stop_channels()
+        cls.km.shutdown_kernel()
+
+    @classmethod
+    def _request_kernel_info_reply(cls) -> dict[str, Any]:
+        msg_id = cls.kc.kernel_info()
+        reply = cls.kc.get_shell_msg(timeout=jupyter_kernel_test.TIMEOUT)
+        if reply["header"]["msg_type"] != "kernel_info_reply":
+            raise AssertionError("Unexpected kernel_info reply payload")
+        reply_content = reply["content"]
+        if reply_content.get("status") != "ok":
+            raise AssertionError(f"kernel_info returned {reply_content}")
+        return reply
+
+    def test_kernel_info(self) -> None:
+        assert self._kernel_info_reply is not None
+        reply = self._kernel_info_reply
+        lang_info = reply["content"]["language_info"]
+        self.assertEqual(lang_info["name"], self.language_name)
+        self.assertEqual(lang_info["file_extension"], "hs")
+
+    def _execute(self, *, code: str) -> tuple[dict[str, Any], list[dict[str, Any]]]:
+        return self.execute_helper(code=code, timeout=jupyter_kernel_test.TIMEOUT)
+
+    @staticmethod
+    def _extract_plain_text(
+        output_msgs: list[dict[str, Any]],
+        *,
+        msg_type: str = "execute_result",
+    ) -> str:
+        if msg_type == "execute_result":
+            return visible_text(output_msgs)
+        for msg in output_msgs:
+            if msg["msg_type"] == msg_type:
+                return msg["content"].get("text", "")
+        return ""
+
+    def test_simple_expression_emits_execute_result(self) -> None:
+        """Running a tiny arithmetic expression should yield execute_result."""
+        self.flush_channels()
+        reply, output_msgs = self._execute(code="1 + 1")
+
+        self.assertEqual(reply["content"]["status"], "ok")
+
+        result_msgs = [
+            msg for msg in output_msgs if msg["msg_type"] == "execute_result"
+        ]
+        self.assertTrue(
+            result_msgs,
+            f"Expected execute_result message, saw {[msg['msg_type'] for msg in output_msgs]}",
+        )
+
+        payload = result_msgs[0]["content"]["data"].get("text/plain", "")
+        self.assertIn("2", payload.strip())
+
+    def test_invalid_haskell_snippet_reports_error(self) -> None:
+        """Parser failures should bubble up as notebook errors."""
+        self.flush_channels()
+        reply, output_msgs = self._execute(code="1 +")
+
+        self.assertEqual(reply["content"]["status"], "error")
+        error_msgs = [msg for msg in output_msgs if msg["msg_type"] == "error"]
+        self.assertTrue(
+            error_msgs,
+            f"No error output, saw {[msg['msg_type'] for msg in output_msgs]}",
+        )
+
+    def test_definition_persists_across_cells(self) -> None:
+        """Definitions should persist in the REPL context across cells."""
+        self.flush_channels()
+        reply, outputs = self._execute(code="square x = x * x")
+        self.assertEqual(reply["content"]["status"], "ok")
+        self.assertFalse(
+            any(msg["msg_type"] == "execute_result" for msg in outputs),
+            "Definition produced an unexpected execute_result payload",
+        )
+
+        self.flush_channels()
+        reply, outputs = self._execute(code="square 7")
+        self.assertEqual(reply["content"]["status"], "ok")
+        payload = self._extract_plain_text(outputs)
+        self.assertIn("49", payload.strip())
+
+    def test_putstrln_emits_plaintext(self) -> None:
+        """putStrLn output should surface back to the notebook."""
+        self.flush_channels()
+        reply, outputs = self._execute(code='putStrLn "hello from xeus"')
+        self.assertEqual(reply["content"]["status"], "ok")
+        payload = self._extract_plain_text(outputs)
+        self.assertIn("hello from xeus", payload)
+
+    def test_execute_stdout(self) -> None:
+        """Kernel emits stdout-like content via execute_result payloads."""
+        self.flush_channels()
+        reply, outputs = self._execute(code='putStr "hello, world"')
+        self.assertEqual(reply["content"]["status"], "ok")
+        payload = self._extract_plain_text(outputs)
+        self.assertIn("hello, world", payload)
+
+    def test_execute_stderr(self) -> None:
+        """Kernel reports failures as Jupyter error messages."""
+        self.flush_channels()
+        reply, outputs = self._execute(code="1 `div` 0")
+        self.assertEqual(reply["content"]["status"], "error")
+        errors = [msg for msg in outputs if msg["msg_type"] == "error"]
+        self.assertTrue(errors)
+        text = "\n".join(errors[0]["content"].get("traceback", []))
+        if not text:
+            text = errors[0]["content"].get("evalue", "")
+        self.assertIn("Runtime error", text)
+
+    def test_display_data(self) -> None:
+        """Kernel emits HTML, LaTeX, and Markdown as display_data."""
+        samples = [
+            ("text/html", "<b>Bold</b>"),
+            ("text/latex", "$x^2$"),
+            ("text/markdown", "**Bold**"),
+        ]
+        for mime_type, content in samples:
+            with self.subTest(mime_type=mime_type):
+                self.flush_channels()
+                code = f'putStr "\\x02{mime_type}\\x1F{content}\\x03"'
+                reply, outputs = self._execute(code=code)
+                self.assertEqual(reply["content"]["status"], "ok")
+                self.assertEqual(display_value(outputs, mime_type), content)
+
+    def test_pager(self) -> None:
+        """Kernel currently does not use execute_reply payload pager output."""
+        self.flush_channels()
+        reply, outputs = self._execute(code=":type putStrLn")
+        self.assertEqual(reply["content"]["status"], "ok")
+        self.assertEqual(reply["content"].get("payload", []), [])
+        payload = self._extract_plain_text(outputs)
+        self.assertIn("putStrLn ::", payload)
+
+    def test_clear_output(self) -> None:
+        """Kernel does not emit clear_output; ensure it still executes cleanly."""
+        self.flush_channels()
+        reply, outputs = self._execute(code='putStrLn "clear-output-nop"')
+        self.assertEqual(reply["content"]["status"], "ok")
+        has_clear = any(msg["msg_type"] == "clear_output" for msg in outputs)
+        self.assertFalse(has_clear)
+
+    def test_completion_filters_prefix(self) -> None:
+        """Completion should honor the prefix at the cursor position."""
+        self.flush_channels()
+        reply, _ = self._execute(code="xh_comp_value = 123")
+        self.assertEqual(reply["content"]["status"], "ok")
+
+        self.flush_channels()
+        msg_id = self.kc.complete(code="xh_comp", cursor_pos=7)
+        reply_msg = self.kc.get_shell_msg(timeout=jupyter_kernel_test.TIMEOUT)
+
+        self.assertEqual(reply_msg["parent_header"].get("msg_id"), msg_id)
+        content = reply_msg["content"]
+        self.assertEqual(content.get("status"), "ok")
+
+        matches = content.get("matches", [])
+        self.assertIn("xh_comp_value", matches)
+        self.assertNotIn("where", matches)  # should be filtered out by prefix
+        self.assertEqual(content.get("cursor_start"), 0)
+        self.assertEqual(content.get("cursor_end"), 7)
+
+    def test_multi_statement_cell(self) -> None:
+        """Repro Case 1: Mix of definition and expression in one cell."""
+        self.flush_channels()
+        code = 'name = "Haskell Curry"\nputStrLn name'
+        reply, outputs = self._execute(code=code)
+        self.assertEqual(reply["content"]["status"], "ok")
+        payload = self._extract_plain_text(outputs)
+        self.assertIn("Haskell Curry", payload)
+
+    def test_multi_expression_cell(self) -> None:
+        """Repro Case 2: Multiple IO actions in one cell."""
+        self.flush_channels()
+        code = 'putStrLn "Hello"\nputStrLn "World"'
+        reply, outputs = self._execute(code=code)
+        self.assertEqual(reply["content"]["status"], "ok")
+        payload = self._extract_plain_text(outputs)
+        self.assertIn("Hello", payload)
+        self.assertIn("World", payload)
+
+    def test_mixed_definition_and_pure_expression(self) -> None:
+        """Edge Case: Pure expression following a definition (no IO)."""
+        self.flush_channels()
+        code = 'xh_edge_x = 10\nxh_edge_x + 32'
+        reply, outputs = self._execute(code=code)
+        self.assertEqual(reply["content"]["status"], "ok")
+        payload = self._extract_plain_text(outputs)
+        self.assertIn("42", payload)
+
+    def test_simple_pure_expression(self) -> None:
+        """Ensure a single pure expression still works (was an edge case in redesign)."""
+        self.flush_channels()
+        code = '21 + 21'
+        reply, outputs = self._execute(code=code)
+        self.assertEqual(reply["content"]["status"], "ok")
+        payload = self._extract_plain_text(outputs)
+        self.assertIn("42", payload)
+
+    def test_type_command_reports_expression_type(self) -> None:
+        """`:type` should print the inferred type in cell output."""
+        self.flush_channels()
+        reply, outputs = self._execute(code=':type "Hello World"')
+        self.assertEqual(reply["content"]["status"], "ok")
+        payload = self._extract_plain_text(outputs)
+        self.assertIn('"Hello World" ::', payload)
+        self.assertTrue("[Char]" in payload or "String" in payload)
+
+    def test_kind_command_reports_type_kind(self) -> None:
+        """`:kind` should print the inferred kind in cell output."""
+        self.flush_channels()
+        reply, outputs = self._execute(code=":kind Int")
+        self.assertEqual(reply["content"]["status"], "ok")
+        payload = self._extract_plain_text(outputs)
+        self.assertIn("Int ::", payload)
+        self.assertTrue("*" in payload or "Type" in payload)
+
+    def test_multi_line_definition_followed_by_expression(self) -> None:
+        """Edge Case: Multi-line definition (layout) followed by an expression."""
+        self.flush_channels()
+        code = 'xh_multi_f x =\n  x * 2\nxh_multi_f 21'
+        reply, outputs = self._execute(code=code)
+        self.assertEqual(reply["content"]["status"], "ok")
+        payload = self._extract_plain_text(outputs)
+        self.assertIn("42", payload)
+
+    def test_inspect_simple_variable(self) -> None:
+        """Verify Shift+Tab introspection for a user-defined variable."""
+        self.flush_channels()
+        self._execute(code="xh_inspect_x = 42")
+
+        msg_id = self.kc.inspect(code="xh_inspect_x", cursor_pos=5)
+        reply_msg = self.kc.get_shell_msg(timeout=jupyter_kernel_test.TIMEOUT)
+
+        self.assertEqual(reply_msg["content"]["status"], "ok")
+        self.assertTrue(reply_msg["content"]["found"])
+        data = reply_msg["content"]["data"]
+        # MicroHs shows the polymorphic type for 42: (forall a . ((Num a) => a))
+        self.assertIn("xh_inspect_x ::", data["text/plain"])
+        self.assertIn("Num", data["text/plain"])
+
+    def test_inspect_builtin_function(self) -> None:
+        """Verify Shift+Tab introspection for a built-in function."""
+        self.flush_channels()
+        # Warm up if necessary
+        self._execute(code="0")
+
+        msg_id = self.kc.inspect(code="putStrLn", cursor_pos=4)
+        reply_msg = self.kc.get_shell_msg(timeout=jupyter_kernel_test.TIMEOUT)
+
+        self.assertEqual(reply_msg["content"]["status"], "ok")
+        self.assertTrue(reply_msg["content"]["found"])
+        data = reply_msg["content"]["data"]
+        # MicroHs might show it as ([Char]) -> (IO ())
+        self.assertIn("putStrLn ::", data["text/plain"])
+        self.assertIn("[Char]", data["text/plain"])
+        self.assertIn("IO", data["text/plain"])

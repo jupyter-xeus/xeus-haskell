@@ -1,2 +1,5 @@
 # SCM syntax highlighting & preventing 3-way merges
 pixi.lock merge=binary linguist-language=YAML linguist-generated=true
+# Keep upstream license texts byte-for-byte intact; do not flag their
+# intentional whitespace as project source formatting errors.
+xhaskell/*/licenses/** -whitespace
