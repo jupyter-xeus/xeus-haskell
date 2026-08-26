@@ -1,0 +1,43 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1400" height="360" viewBox="0 0 1400 360" role="img" aria-labelledby="title desc">
+  <title id="title">JupyterLite architecture</title>
+  <desc id="desc">Static assets are delivered to a browser, where the JupyterLab interface communicates with a Web Worker running a WebAssembly kernel.</desc>
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#000"/>
+    </marker>
+    <style>
+      .box { fill: #fff; stroke: #000; stroke-width: 3; }
+      .group { fill: #fff; stroke: #000; stroke-width: 3; stroke-dasharray: 10 8; }
+      .arrow { fill: none; stroke: #000; stroke-width: 3; marker-end: url(#arrow); }
+      .title { font-family: Arial, Helvetica, sans-serif; font-size: 34px; font-weight: 700; fill: #000; text-anchor: middle; }
+      .detail { font-family: Arial, Helvetica, sans-serif; font-size: 28px; fill: #000; text-anchor: middle; }
+      .label { font-family: Arial, Helvetica, sans-serif; font-size: 30px; font-weight: 700; fill: #000; }
+    </style>
+  </defs>
+  <rect width="1400" height="360" fill="#fff"/>
+
+  <rect class="box" x="30" y="110" width="270" height="130" rx="12"/>
+  <text class="title" x="165" y="165">Static host</text>
+  <text class="detail" x="165" y="205">static assets</text>
+
+  <path class="arrow" d="M300 175 H390"/>
+
+  <rect class="group" x="400" y="28" width="970" height="304" rx="18"/>
+  <text class="label" x="430" y="64">Browser</text>
+
+  <rect class="box" x="440" y="105" width="275" height="140" rx="12"/>
+  <text class="title" x="577.5" y="165">JupyterLab UI</text>
+  <text class="detail" x="577.5" y="205">notebooks</text>
+
+  <path class="arrow" d="M715 175 H805"/>
+
+  <rect class="box" x="815" y="105" width="235" height="140" rx="12"/>
+  <text class="title" x="932.5" y="165">Web Worker</text>
+  <text class="detail" x="932.5" y="205">execution</text>
+
+  <path class="arrow" d="M1050 175 H1110"/>
+
+  <rect class="box" x="1120" y="105" width="210" height="140" rx="12"/>
+  <text class="title" x="1225" y="165">Wasm</text>
+  <text class="detail" x="1225" y="205">Haskell kernel</text>
+</svg>

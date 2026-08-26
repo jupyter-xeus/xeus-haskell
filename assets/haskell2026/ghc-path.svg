@@ -1,0 +1,36 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="280" viewBox="0 0 1200 280" role="img" aria-labelledby="title desc">
+  <title id="title">GHC browser kernel execution path</title>
+  <desc id="desc">A Jupyter request passes through the Xeus Lite WebAssembly kernel, over a JSPI and JSON boundary, through JavaScript browser support into a persistent GHC WebAssembly session.</desc>
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#000"/>
+    </marker>
+    <style>
+      .box { fill: #fff; stroke: #000; stroke-width: 3; rx: 12; }
+      .arrow { fill: none; stroke: #000; stroke-width: 3; marker-end: url(#arrow); }
+      .title { font-family: Arial, Helvetica, sans-serif; font-size: 34px; font-weight: 700; fill: #000; text-anchor: middle; }
+      .detail { font-family: Arial, Helvetica, sans-serif; font-size: 27px; fill: #000; text-anchor: middle; }
+      .edge { font-family: Arial, Helvetica, sans-serif; font-size: 25px; fill: #000; text-anchor: middle; }
+    </style>
+  </defs>
+  <rect width="1200" height="280" fill="#fff"/>
+  <rect class="box" x="20" y="82" width="230" height="100"/>
+  <text class="title" x="135" y="125">Jupyter</text>
+  <text class="detail" x="135" y="156">request</text>
+  <path class="arrow" d="M250 132 H300"/>
+
+  <rect class="box" x="302" y="82" width="260" height="100"/>
+  <text class="title" x="432" y="122">xeus-lite</text>
+  <text class="detail" x="432" y="154">C++ / Wasm</text>
+  <path class="arrow" d="M562 132 H632"/>
+  <text class="edge" x="597" y="106">JSPI</text>
+
+  <rect class="box" x="634" y="82" width="260" height="100"/>
+  <text class="title" x="764" y="122">JavaScript</text>
+  <text class="detail" x="764" y="154">bridge</text>
+  <path class="arrow" d="M894 132 H944"/>
+
+  <rect class="box" x="946" y="82" width="234" height="100"/>
+  <text class="title" x="1063" y="122">GHC</text>
+  <text class="detail" x="1063" y="154">Wasm / WASI</text>
+</svg>
