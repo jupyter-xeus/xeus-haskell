@@ -904,6 +904,74 @@ A small framed MIME protocol becomes Jupyter `display_data`.
 
 #align(center)[#text(size: 20pt, weight: "bold")[The compiler sees files; deployment serves static assets.]]
 
+== Package Access
+
+#text(size: 14pt, fill: diagram-mid, weight: "bold")[APPENDIX · ECOSYSTEM CONSTRAINT]
+
+#v(-.2cm)
+
+#align(center)[
+  #grid(
+    columns: (5.8cm, .7cm, 9.2cm, .7cm, 6.5cm),
+    row-gutter: .2cm,
+    align: center + horizon,
+    block(width: 100%, height: 1.3cm, inset: 8pt, radius: 8pt, fill: diagram-fog, stroke: 1pt + diagram-ink)[
+      #align(center + horizon)[#text(size: 16.5pt, weight: "bold")[Browser worker]]
+    ],
+    [#text(size: 23pt)[→]],
+    block(width: 100%, height: 1.3cm, inset: 8pt, radius: 8pt, fill: white, stroke: 1pt + diagram-ink)[
+      #align(center + horizon)[#text(size: 15.5pt, weight: "bold")[External origin without CORS]]
+    ],
+    [#text(size: 23pt)[→]],
+    block(width: 100%, height: 1.3cm, inset: 8pt, radius: 8pt, fill: white, stroke: 1.6pt + diagram-ink)[
+      #align(center + horizon)[#text(size: 16.5pt, weight: "bold")[× CORS blocked]]
+    ],
+    block(width: 100%, height: 1.3cm, inset: 8pt, radius: 8pt, fill: diagram-fog, stroke: 1pt + diagram-ink)[
+      #align(center + horizon)[#text(size: 16.5pt, weight: "bold")[Browser worker]]
+    ],
+    [#text(size: 23pt)[→]],
+    block(width: 100%, height: 1.3cm, inset: 8pt, radius: 8pt, fill: white, stroke: 1pt + diagram-ink)[
+      #align(center + horizon)[#text(size: 15.5pt, weight: "bold")[Same-origin or CORS-enabled]]
+    ],
+    [#text(size: 23pt)[→]],
+    block(width: 100%, height: 1.3cm, inset: 8pt, radius: 8pt, fill: diagram-ink, stroke: 1pt + diagram-ink)[
+      #align(center + horizon)[#text(size: 16.5pt, fill: white, weight: "bold")[Emscripten FS]]
+    ],
+  )
+]
+
+#v(-.15cm)
+
+#align(center)[
+  #set text(size: 14pt)
+  #table(
+    columns: (5.8cm, 8.5cm, 1fr),
+    inset: 5pt,
+    stroke: .7pt + diagram-mid,
+    fill: (x, y) => if y == 0 { diagram-ink } else if x == 0 { diagram-fog } else { white },
+    align: (x, y) => if x == 0 { center + horizon } else { left + horizon },
+    [#text(fill: white, weight: "bold")[Actor]],
+    [#text(fill: white, weight: "bold")[Shared requirement]],
+    [#text(fill: white, weight: "bold")[Outcome]],
+    [*Package authors*],
+    [Browser-ready packages],
+    [Replace native-only dependencies.],
+    [*Registries / CDNs*],
+    [CORS headers + immutable URLs],
+    [Workers fetch artifacts directly.],
+    [*JupyterLite sites*],
+    [Bundles or same-origin mirrors],
+    [Static, reproducible delivery.],
+    [*Tooling community*],
+    [Metadata, hashes, and caches],
+    [Safe version resolution.],
+  )
+]
+
+#v(-.1cm)
+
+#align(center)[#text(size: 18pt, weight: "bold")[Browser-native distribution needs the whole Haskell ecosystem.]]
+
 == Logo Licenses
 
 #text(size: 14pt, fill: diagram-mid, weight: "bold")[APPENDIX · ATTRIBUTION]
