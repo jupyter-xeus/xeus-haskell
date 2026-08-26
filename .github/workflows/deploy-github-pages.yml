@@ -21,12 +21,87 @@ jobs:
       - uses: prefix-dev/setup-pixi@v0
         with:
           cache: true
+          cache-write: ${{ github.ref == 'refs/heads/main' && github.event_name != 'pull_request' }}
           environments: wasm-build
-      - uses: actions/cache@v4
+      - name: Restore docs environment
+        id: docs-cache
+        uses: actions/cache/restore@v4
+        with:
+          path: .pixi/envs/docs
+          key: pixi-env-docs-v1-${{ runner.os }}-${{ hashFiles('pixi.lock') }}
+      - name: Restore Wasm host environment
+        id: wasm-host-cache
+        uses: actions/cache/restore@v4
+        with:
+          path: .pixi/envs/wasm-host
+          key: wasm-host-v1-${{ runner.os }}-${{ hashFiles('pixi.lock') }}
+      - name: Restore GHC Wasm inputs
+        id: ghc-wasm-inputs-cache
+        uses: actions/cache/restore@v4
+        with:
+          path: |
+            wasm-build/_deps/ghc/downloads
+            wasm-build/_deps/ghc/toolchains
+            wasm-build/_deps/ghc/browser-assets
+          key: ghc-wasm-inputs-v1-${{ runner.os }}-${{ hashFiles('pixi.lock', 'licenses.toml', 'xhaskell/ghc/scripts/prepare-inputs.sh') }}
+      - name: Restore incremental Wasm build
+        id: wasm-build-cache
+        uses: actions/cache/restore@v4
+        with:
+          path: |
+            wasm-build
+            !wasm-build/_deps/ghc/downloads
+            !wasm-build/_deps/ghc/toolchains
+            !wasm-build/_deps/ghc/browser-assets
+            !wasm-build/corresponding-source
+          key: wasm-build-v1-${{ runner.os }}-${{ hashFiles('pixi.lock', 'licenses.toml') }}-${{ github.sha }}
+          restore-keys: |
+            wasm-build-v1-${{ runner.os }}-${{ hashFiles('pixi.lock', 'licenses.toml') }}-
+      - name: Restore corresponding-source downloads
+        id: corresponding-source-cache
+        uses: actions/cache/restore@v4
         with:
           path: .cache/corresponding-source
           key: corresponding-source-${{ runner.os }}-${{ hashFiles('licenses.toml') }}
       - run: pixi run -e wasm-build pages
+      - name: Save docs environment
+        if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request' && steps.docs-cache.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v4
+        with:
+          path: .pixi/envs/docs
+          key: ${{ steps.docs-cache.outputs.cache-primary-key }}
+      - name: Save Wasm host environment
+        if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request' && steps.wasm-host-cache.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v4
+        with:
+          path: .pixi/envs/wasm-host
+          key: ${{ steps.wasm-host-cache.outputs.cache-primary-key }}
+      - name: Save GHC Wasm inputs
+        if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request' && steps.ghc-wasm-inputs-cache.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v4
+        with:
+          path: |
+            wasm-build/_deps/ghc/downloads
+            wasm-build/_deps/ghc/toolchains
+            wasm-build/_deps/ghc/browser-assets
+          key: ${{ steps.ghc-wasm-inputs-cache.outputs.cache-primary-key }}
+      - name: Save incremental Wasm build
+        if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request' && steps.wasm-build-cache.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v4
+        with:
+          path: |
+            wasm-build
+            !wasm-build/_deps/ghc/downloads
+            !wasm-build/_deps/ghc/toolchains
+            !wasm-build/_deps/ghc/browser-assets
+            !wasm-build/corresponding-source
+          key: ${{ steps.wasm-build-cache.outputs.cache-primary-key }}
+      - name: Save corresponding-source downloads
+        if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request' && steps.corresponding-source-cache.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v4
+        with:
+          path: .cache/corresponding-source
+          key: ${{ steps.corresponding-source-cache.outputs.cache-primary-key }}
       - uses: actions/upload-pages-artifact@v4
         with:
           path: ./dist
