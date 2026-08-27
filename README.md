@@ -41,38 +41,6 @@ The WebAssembly build installs both kernels. `xhaskell-ghc` builds a local
 GHC Wasm resource bundle from the pinned native-bignum flavour described in `licenses.toml`;
 it does not copy `ghc-in-browser`.
 
-### amd64 development container
-
-All local development targets `linux-64` through Docker; do not run Pixi tasks directly on the host.
-On an aarch64 workstation, use the supplied amd64 container; Docker Desktop
-or a Docker installation with `binfmt`/QEMU support runs it transparently.
-If `docker build --platform linux/amd64` reports `exec format error`, register
-the Docker emulator once (requires Docker administrator access):
-
-```sh
-docker run --privileged --rm tonistiigi/binfmt --install amd64
-```
-
-```sh
-docker build --platform linux/amd64 -t xeus-haskell-dev .
-docker run --rm -it --platform linux/amd64 \
-  -v "$PWD:/workspace" -w /workspace \
-  xeus-haskell-dev
-```
-
-Inside the container, use the normal Pixi workflow:
-
-```sh
-pixi run -e wasm-build wasm
-```
-
-The image runs as Ubuntu UID 1000 (`ubuntu`), matching the usual local Linux user. If the bind mount is owned by another
-host UID, either grant that user write access to the checkout or pass a
-matching Docker `--user` value and use a writable Pixi cache directory.
-
-Pixi is the only local build entry point. GitHub Actions invokes the same
-public tasks; only Pages deployment and GitHub Release upload remain CI-only.
-
 ## Development
 
 | Environment | Purpose |
