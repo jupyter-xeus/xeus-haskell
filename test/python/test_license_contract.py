@@ -31,7 +31,7 @@ def test_license_texts_are_not_tracked() -> None:
 
 def test_license_manifest_pins_native_bignum_ghc_and_build_assets() -> None:
     manifest = tomllib.loads(LICENSES_MANIFEST.read_text())
-    assert manifest["ghc"]["repository"] == "https://gitlab.haskell.org/haskell-wasm/ghc.git"
+    assert manifest["ghc"]["repository"] == "https://github.com/haskell-wasm/ghc.git"
     assert manifest["ghc"]["commit"] == "05e0ef08e100cf3bd2150adcf8e53ba9ad30519a"
     assert len(manifest["ghc"]["submodules"]) == 33
     assert all("gmp" not in entry["path"] for entry in manifest["ghc"]["submodules"])
