@@ -7,7 +7,7 @@ schema_version = 1
 name = "xeus-haskell"
 
 [ghc]
-repository = "https://gitlab.haskell.org/haskell-wasm/ghc.git"
+repository = "https://github.com/haskell-wasm/ghc.git"
 commit = "05e0ef08e100cf3bd2150adcf8e53ba9ad30519a"
 
 [[ghc.submodules]]
