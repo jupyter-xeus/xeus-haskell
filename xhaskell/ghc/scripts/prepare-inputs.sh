@@ -50,7 +50,7 @@ install_toolchain() {
   local archive_sha256=$4
   local archive_path source_dir staging_dir cc_for_build
 
-  [[ ! -f $toolchain_dir/env ]] || return
+  [[ ! -f $toolchain_dir/env ]] || return 0
   [[ ! -e $toolchain_dir ]] || die "incomplete toolchain at $toolchain_dir"
 
   archive_path="$build_dir/downloads/ghc-wasm-meta-$revision.tar.gz"
